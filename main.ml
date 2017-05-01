@@ -1,18 +1,19 @@
 open Core
-open Async
+
+let main ~numbers =
+  let numbers_l = String.split numbers ~on:',' in
+  let numbers_i = List.map numbers_l ~f:Int.of_string in
+  let sum_of_squares = List.fold numbers_i ~init:0 ~f:(fun acc n -> acc + n * n) in
+  printf "%i" sum_of_squares
 
 let () =
   let open Command.Let_syntax in
-  Command.async'
+  Command.basic'
     ~summary:"cook eggs"
     [%map_open
-      let num_eggs =
-        flag "num-eggs" (required int) ~doc:"COUNT cook this many eggs"
+      let numbers = flag "numbers" (required string) ~doc:"S list of numbers separated by commas"
       in
       fun () ->
-        (* TODO: implement egg-cooking in ocaml *)
-        failwith "no eggs today"
+        main ~numbers
     ]
   |> Command.run
-
-(* Trivial change *)
