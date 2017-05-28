@@ -9,9 +9,10 @@ module Make (Floatlike : sig
     val ( * ) : t -> t -> t
     val scale : t -> float -> t
     val int_pow : t -> int -> t
+    val exp : t -> t
+    val ( ** ) : t -> t -> t
     val sin : t -> t
     val cos : t -> t
-    val exp : t -> t
   end) = struct
   type t =
     { f : Floatlike.t -> Floatlike.t
@@ -59,13 +60,17 @@ module Make (Floatlike : sig
   module Uncomposed = struct
     let rec scale c =
       { f = (fun x -> Floatlike.scale x c)
-      ; f' = Lazy.from_fun (fun () -> compose (scale c) (const Floatlike.one))
+      ; f' = Lazy.from_fun (fun () -> (const Floatlike.(scale one c)))
       }
 
     let rec int_pow i =
       { f = (fun x -> Floatlike.int_pow x i)
       ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int i)) (int_pow (Int.pred i)))
       }
+
+    let rec exp () =
+      { f = Floatlike.exp
+      ; f' = Lazy.from_fun (fun () -> exp ()) }
 
     let rec sin () =
       { f = Floatlike.sin
@@ -74,13 +79,12 @@ module Make (Floatlike : sig
     and cos () =
       { f = Floatlike.cos
       ; f' = Lazy.from_fun (fun () -> (const Floatlike.zero) - sin ()) }
-
-    let rec exp () =
-      { f = Floatlike.exp
-      ; f' = Lazy.from_fun (fun () -> exp ()) }
   end
 
+  let scale t c = compose (Uncomposed.scale c) t
+  let int_pow t i = compose (Uncomposed.int_pow i) t
+  let (/) tg th = tg * (int_pow th (-1))
+  let exp t = compose (Uncomposed.exp ()) t
   let sin t = compose (Uncomposed.sin ()) t
   let cos t = compose (Uncomposed.cos ()) t
-  let exp t = compose (Uncomposed.exp ()) t
 end
