@@ -59,9 +59,9 @@ module Make (Floatlike : sig
       ; f' = Lazy.from_fun (fun () -> (const Floatlike.(scale one c)))
       }
 
-    let rec int_pow i =
-      { f = (fun x -> Floatlike.int_pow x i)
-      ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int i)) (int_pow (Int.pred i)))
+    let rec int_pow n =
+      { f = (fun x -> Floatlike.int_pow x n)
+      ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int n)) (int_pow (Int.pred n)))
       }
 
     let rec exp () =
@@ -84,7 +84,7 @@ module Make (Floatlike : sig
 
   let scale t c = compose (Uncomposed.scale c) t
 
-  let int_pow t i = compose (Uncomposed.int_pow i) t
+  let int_pow t n = compose (Uncomposed.int_pow n) t
 
   let (/) g h = g * (int_pow h (-1))
 
