@@ -19,9 +19,9 @@ module Make (Floatlike : sig
     ; f' : t Lazy.t
     }
 
-  let diff { f; f' } = Lazy.force f'
+  let eval { f; f' = _ } x = f x
 
-  let eval { f; f' } x = f x
+  let diff { f = _; f' } = Lazy.force f'
 
   let rec const x =
     { f = Fn.const x
@@ -33,32 +33,28 @@ module Make (Floatlike : sig
     ; f' = Lazy.from_fun (fun () -> const Floatlike.one)
     }
 
-  let rec (+) { f = g; f' = g' } { f = h; f' = h' } =
-    { f = (fun x -> Floatlike.(+) (g x) (h x))
-    ; f' = Lazy.from_fun (fun () -> Lazy.force g' + Lazy.force h')
+  let rec (+) g h =
+    { f = (fun x -> Floatlike.(+) (eval g x) (eval h x))
+    ; f' = Lazy.from_fun (fun () -> diff g + diff h)
     }
 
-  let rec (-) { f = g; f' = g' } { f = h; f' = h' } =
-    { f = (fun x -> Floatlike.(-) (g x) (h x))
-    ; f' = Lazy.from_fun (fun () -> Lazy.force g' - Lazy.force h')
+  let rec (-) g h =
+    { f = (fun x -> Floatlike.(-) (eval g x) (eval h x))
+    ; f' = Lazy.from_fun (fun () -> diff g - diff h)
     }
 
-  let rec ( * ) tg th =
-    let { f = g; f' = g' } = tg in
-    let { f = h; f' = h' } = th in
-    { f = (fun x -> Floatlike.( * ) (g x) (h x))
-    ; f' = Lazy.from_fun (fun () -> tg * Lazy.force h' + Lazy.force g' * th)
+  let rec ( * ) g h =
+    { f = (fun x -> Floatlike.( * ) (eval g x) (eval h x))
+    ; f' = Lazy.from_fun (fun () -> g * diff h + diff g * h)
     }
 
-  let rec compose tg th =
-    let { f = g; f' = g' } = tg in
-    let { f = h; f' = h' } = th in
-    { f = (fun x -> g (h x))
-    ; f' = Lazy.from_fun (fun () -> compose (diff tg) th * diff th)
+  let rec compose g h =
+    { f = (fun x -> eval g (eval h x))
+    ; f' = Lazy.from_fun (fun () -> compose (diff g) h * diff h)
     }
 
   module Uncomposed = struct
-    let rec scale c =
+    let scale c =
       { f = (fun x -> Floatlike.scale x c)
       ; f' = Lazy.from_fun (fun () -> (const Floatlike.(scale one c)))
       }
@@ -90,13 +86,13 @@ module Make (Floatlike : sig
 
   let int_pow t i = compose (Uncomposed.int_pow i) t
 
-  let (/) tg th = tg * (int_pow th (-1))
+  let (/) g h = g * (int_pow h (-1))
 
   let exp t = compose (Uncomposed.exp ()) t
 
   let log t = compose Uncomposed.log t
 
-  let ( ** ) tg th = exp (th * log tg)
+  let ( ** ) g h = exp (h * log g)
 
   let sin t = compose (Uncomposed.sin ()) t
 

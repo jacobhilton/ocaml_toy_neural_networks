@@ -1,5 +1,3 @@
-open Core
-
 module Make (Floatlike : sig
     type t
     val zero : t
@@ -16,9 +14,9 @@ module Make (Floatlike : sig
   end) : sig
   type t
 
-  val diff : t -> t
-
   val eval : t -> Floatlike.t -> Floatlike.t
+
+  val diff : t -> t
 
   val const : Floatlike.t -> t
 
