@@ -10,7 +10,7 @@ module Make (Floatlike : sig
     val scale : t -> float -> t
     val int_pow : t -> int -> t
     val exp : t -> t
-    val ( ** ) : t -> t -> t
+    val log : t -> t
     val sin : t -> t
     val cos : t -> t
   end) = struct
@@ -72,6 +72,11 @@ module Make (Floatlike : sig
       { f = Floatlike.exp
       ; f' = Lazy.from_fun (fun () -> exp ()) }
 
+    let log =
+      { f = Floatlike.log
+      ; f' = Lazy.from_fun (fun () -> int_pow (-1))
+      }
+
     let rec sin () =
       { f = Floatlike.sin
       ; f' = Lazy.from_fun (fun () -> cos ()) }
@@ -82,9 +87,18 @@ module Make (Floatlike : sig
   end
 
   let scale t c = compose (Uncomposed.scale c) t
+
   let int_pow t i = compose (Uncomposed.int_pow i) t
+
   let (/) tg th = tg * (int_pow th (-1))
+
   let exp t = compose (Uncomposed.exp ()) t
+
+  let log t = compose Uncomposed.log t
+
+  let ( ** ) tg th = exp (th * log tg)
+
   let sin t = compose (Uncomposed.sin ()) t
+
   let cos t = compose (Uncomposed.cos ()) t
 end

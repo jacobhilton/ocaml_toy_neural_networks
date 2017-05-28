@@ -10,7 +10,7 @@ module Make (Floatlike : sig
     val scale : t -> float -> t
     val int_pow : t -> int -> t
     val exp : t -> t
-    val ( ** ) : t -> t -> t
+    val log : t -> t
     val sin : t -> t
     val cos : t -> t
   end) : sig
@@ -39,6 +39,8 @@ module Make (Floatlike : sig
   val (/) : t -> t -> t
 
   val exp : t -> t
+
+  val log : t -> t
 
   val ( ** ) : t -> t -> t
 
