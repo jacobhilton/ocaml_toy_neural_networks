@@ -7,6 +7,8 @@ module Make (Floatlike : sig
     val (+) : t -> t -> t
     val (-) : t -> t -> t
     val ( * ) : t -> t -> t
+    val scale : t -> float -> t
+    val int_pow : t -> int -> t
     val sin : t -> t
     val cos : t -> t
     val exp : t -> t
@@ -55,6 +57,16 @@ module Make (Floatlike : sig
     }
 
   module Uncomposed = struct
+    let rec scale c =
+      { f = (fun x -> Floatlike.scale x c)
+      ; f' = Lazy.from_fun (fun () -> compose (scale c) (const Floatlike.one))
+      }
+
+    let rec int_pow i =
+      { f = (fun x -> Floatlike.int_pow x i)
+      ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int i)) (int_pow (Int.pred i)))
+      }
+
     let rec sin () =
       { f = Floatlike.sin
       ; f' = Lazy.from_fun (fun () -> cos ()) }

@@ -7,11 +7,11 @@ module Make (Floatlike : sig
     val (+) : t -> t -> t
     val (-) : t -> t -> t
     val ( * ) : t -> t -> t
-    val (/) : t -> t -> t
+    val scale : t -> float -> t
+    val int_pow : t -> int -> t
     val sin : t -> t
     val cos : t -> t
-    val exp : t -> t
-  end) : sig
+    val exp : t -> t  end) : sig
   type t
 
   val diff : t -> t
