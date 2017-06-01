@@ -11,16 +11,23 @@ module Make (Floatlike : sig
     val log : t -> t
     val sin : t -> t
     val cos : t -> t
+    val abs : t -> t
   end) : sig
   type t
 
   val eval : t -> Floatlike.t -> Floatlike.t
 
-  val diff : t -> t
+  val d : t -> t
 
-  val const : Floatlike.t -> t
+  val c : Floatlike.t -> t
 
-  val id : t
+  val zero : t
+
+  val one : t
+
+  val two : t
+
+  val x : t
 
   val (+) : t -> t -> t
 
@@ -45,4 +52,16 @@ module Make (Floatlike : sig
   val sin : t -> t
 
   val cos : t -> t
+
+  val tan : t -> t
+
+  val abs : t -> t
+
+  val step : t -> t
+
+  val relu : t -> t
+
+  val softplus : t -> t
+
+  val sigmoid : t -> t
 end
