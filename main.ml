@@ -2,16 +2,20 @@ open Core
 
 let main ~numbers:_ =
   let module Autodiff = Autodiff.Make(Float) in
-  let myfun = Autodiff.((int_pow (sin x) 2 * cos x + c 3. * cos x) ** (c 4. * cos x + sin x)) in
-  let y = 12. in
-  printf "f(%f) = %f. f''(%f) = %s" y Autodiff.(eval myfun y) y (Float.to_string_round_trippable Autodiff.(eval (d (d myfun)) y));
-  let aha = Autodiff.(d (d (relu x))) in
-  Autodiff.(printf "%f %f %f %f %f %f %s" (eval (step x) 0.) (eval (step x) (-0.5)) (eval (step x) 0.5) (eval aha 0.) (eval aha 1.) (eval aha (-1.)) (Float.to_string_round_trippable (eval (step x) (-0.5))))
+  let f = Autodiff.((int_pow (sin x_0) 2 + cos x_1 * exp x_2)) in
+  let d = Autodiff.d f in
+  let d0 = Infinite_list.nth_exn d 0 in
+  let d1 = Infinite_list.nth_exn d 1 in
+  let d2 = Infinite_list.nth_exn d 2 in
+  let x = [12.; 11.; 10.] in
+  Autodiff.(printf "%f %f %f\n" (eval' d0 x) (eval' d1 x) (eval' d2 x));
+  Float.(printf "%f %f %f" (sin 24.) (-. (sin 11.) *. (exp 10.)) ((cos 11.) *. (exp 10.)));
+  ()
 
 let () =
   let open Command.Let_syntax in
   Command.basic'
-    ~summary:"cook eggs"
+    ~summary:"demo"
     [%map_open
       let numbers = flag "numbers" (optional string) ~doc:"S list of numbers separated by commas"
       in
