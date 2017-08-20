@@ -109,7 +109,7 @@ module Make (Floatlike : sig
 
   let eval' t y = eval t (Infinite_list.of_list y ~default:Floatlike.zero)
 
-  let d { f = _; f' } = Lazy.force f'
+  let grad { f = _; f' } = Lazy.force f'
 
   let rec c y =
     { f = Fn.const y
@@ -135,22 +135,22 @@ module Make (Floatlike : sig
 
   let rec (+) g h =
     { f = (fun y -> Floatlike.(+) (eval g y) (eval h y))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (d g) (d h) ~f:(+))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (grad g) (grad h) ~f:(+))
     }
 
   let rec (-) g h =
     { f = (fun y -> Floatlike.(-) (eval g y) (eval h y))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (d g) (d h) ~f:(-))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (grad g) (grad h) ~f:(-))
     }
 
   let rec ( * ) g h =
     { f = (fun y -> Floatlike.( * ) (eval g y) (eval h y))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (d g) (d h) ~f:(fun dg dh -> g * dh + dg * h))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (grad g) (grad h) ~f:(fun dg dh -> g * dh + dg * h))
     }
 
   let rec compose g h =
     { f = (fun y -> (OneD.eval g (eval h y)))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (d h) ~f:(fun dh -> compose (OneD.d g) h * dh))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad h) ~f:(fun dh -> compose (OneD.d g) h * dh))
     }
 
   let scale t k = compose (OneD.scale k) t

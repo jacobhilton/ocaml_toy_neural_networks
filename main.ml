@@ -3,7 +3,7 @@ open Core
 let main ~numbers:_ =
   let module Autodiff = Autodiff.Make(Float) in
   let f = Autodiff.((int_pow (sin x_0) 2 + cos x_1 * exp x_2)) in
-  let d = Autodiff.d f in
+  let d = Autodiff.grad f in
   let d0 = Infinite_list.nth_exn d 0 in
   let d1 = Infinite_list.nth_exn d 1 in
   let d2 = Infinite_list.nth_exn d 2 in

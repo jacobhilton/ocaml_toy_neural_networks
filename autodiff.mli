@@ -40,7 +40,7 @@ module Make (Floatlike : sig
 
   val eval' : t -> Floatlike.t list -> Floatlike.t
 
-  val d : t -> t Infinite_list.t
+  val grad : t -> t Infinite_list.t
 
   val c : Floatlike.t -> t
 
