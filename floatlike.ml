@@ -1,4 +1,4 @@
-module type Basic = sig
+module type For_matrix = sig
   type t
   val zero : t
   val one : t
@@ -9,7 +9,7 @@ module type Basic = sig
   val equal : t -> t -> bool
 end
 
-module type Extended = sig
+module type For_autodiff = sig
   type t
   val zero : t
   val one : t

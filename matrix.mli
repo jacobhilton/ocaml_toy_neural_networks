@@ -1,4 +1,4 @@
-module Make(Floatlike : Floatlike.Basic) : sig
+module Make(Floatlike : Floatlike.For_matrix) : sig
   type t
 
   val constant : dimx:int -> dimy:int -> Floatlike.t -> t

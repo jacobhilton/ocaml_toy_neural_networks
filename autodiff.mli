@@ -1,4 +1,4 @@
-module Make (Floatlike : Floatlike.Extended) : sig
+module Make (Floatlike : Floatlike.For_autodiff) : sig
   module OneD : sig
     type t
     val eval : t -> Floatlike.t -> Floatlike.t

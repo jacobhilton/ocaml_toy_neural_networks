@@ -1,6 +1,6 @@
 open Core
 
-module Make(Floatlike : Floatlike.Basic) = struct
+module Make(Floatlike : Floatlike.For_matrix) = struct
   type t =
     { dimx : int (* length of outer array *)
     ; dimy : int (* length of each inner array *)

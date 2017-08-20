@@ -1,6 +1,6 @@
 open Core
 
-module Make (Floatlike : Floatlike.Extended) = struct
+module Make (Floatlike : Floatlike.For_autodiff) = struct
   module OneD = struct
     type t =
       { f : Floatlike.t -> Floatlike.t
