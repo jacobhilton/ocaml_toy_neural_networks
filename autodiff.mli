@@ -1,18 +1,4 @@
-module Make (Floatlike : sig
-    type t
-    val zero : t
-    val one : t
-    val (+) : t -> t -> t
-    val (-) : t -> t -> t
-    val ( * ) : t -> t -> t
-    val scale : t -> float -> t
-    val int_pow : t -> int -> t
-    val exp : t -> t
-    val log : t -> t
-    val sin : t -> t
-    val cos : t -> t
-    val abs : t -> t
-  end) : sig
+module Make (Floatlike : Floatlike.Extended) : sig
   module OneD : sig
     type t
     val eval : t -> Floatlike.t -> Floatlike.t

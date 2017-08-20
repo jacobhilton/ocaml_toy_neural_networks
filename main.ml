@@ -10,6 +10,30 @@ let main ~numbers:_ =
   let x = [12.; 11.; 10.] in
   Autodiff.(printf "%f %f %f\n" (eval' d0 x) (eval' d1 x) (eval' d2 x));
   Float.(printf "%f %f %f" (sin 24.) (-. (sin 11.) *. (exp 10.)) ((cos 11.) *. (exp 10.)));
+  let module M = Matrix.Make(Float) in
+  let magic =
+    [ [17.; 24.; 1.; 8.; 15.]
+    ; [23.; 5.; 7.; 14.; 16.]
+    ; [4.; 6.; 13.; 20.; 22.]
+    ; [10.; 12.; 19.; 21.; 3.]
+    ; [11.; 18.; 25.; 2.; 9.]
+    ]
+    |> List.map ~f:(Infinite_list.of_list ~default:0.)
+    |> Infinite_list.of_list ~default:(Infinite_list.constant ~default:0.)
+    |> M.of_infinite_matrix ~dim:5
+  in
+  let to_sexp m =
+    M.to_matrix m
+    |> List.sexp_of_t (List.sexp_of_t Float.sexp_of_t)
+  in
+  let _lu_test =
+    match M.lu magic with
+    | None -> false
+    | Some (l, u) ->
+      match M.(l * u) with
+      | None -> false
+      | Some m -> Sexp.equal (to_sexp magic) (to_sexp m)
+  in
   ()
 
 let () =
