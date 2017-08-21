@@ -7,6 +7,8 @@ module type For_matrix = sig
   val ( * ) : t -> t -> t
   val (/) : t -> t -> t
   val equal : t -> t -> bool
+  val (>) : t -> t -> bool
+  val abs : t -> t
 end
 
 module type For_autodiff = sig

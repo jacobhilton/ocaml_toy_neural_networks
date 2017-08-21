@@ -6,13 +6,38 @@ module Make(Floatlike : Floatlike.For_matrix) : sig
   val id : dim:int -> t
 
   val of_infinite_matrix
-    :  dim:int
+    :  dimx:int
+    -> dimy:int
     -> Floatlike.t Infinite_list.t Infinite_list.t
     -> t
 
+  val row_vector_of_list : Floatlike.t list -> t
+
+  val column_vector_of_list : Floatlike.t list -> t
+
+  val dimx : t -> int
+
+  val dimy : t -> int
+
   val to_matrix : t -> Floatlike.t list list
 
+  val get : t -> x:int -> y:int -> Floatlike.t option
+
+  val set : t -> x:int -> y:int -> Floatlike.t -> t option
+
+  val get_row : t -> x:int -> Floatlike.t list option
+
+  val get_column : t -> y:int -> Floatlike.t list option
+
+  val set_row : t -> x:int -> Floatlike.t list -> t option
+
+  val set_column : t -> y:int -> Floatlike.t list -> t option
+
   val transpose : t -> t
+
+  val append_vertical : t -> t -> t option
+
+  val append_horizontal : t -> t -> t option
 
   val pointwise : t -> t -> f:(Floatlike.t -> Floatlike.t -> Floatlike.t) -> t option
 
@@ -26,6 +51,25 @@ module Make(Floatlike : Floatlike.For_matrix) : sig
   (** Matrix multiplication *)
   val ( * ) : t -> t -> t option
 
-  (** LU decomposition. *)
-  val lu : t -> (t * t) option
+  (** LU decomposition with pivoting. If three matrices are returned, then their
+      product should be the original matrix. *)
+  val plu : t -> (t * t * t) option
+
+  module Exn : sig
+    val pointwise : t -> t -> f:(Floatlike.t -> Floatlike.t -> Floatlike.t) -> t
+
+    val append_vertical : t -> t -> t
+
+    val append_horizontal : t -> t -> t
+
+    val (+) : t -> t -> t
+
+    val (-) : t -> t -> t
+
+    val ( *. ) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
+    val plu : t -> (t * t * t)
+  end
 end

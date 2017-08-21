@@ -20,19 +20,18 @@ let main ~numbers:_ =
     ]
     |> List.map ~f:(Infinite_list.of_list ~default:0.)
     |> Infinite_list.of_list ~default:(Infinite_list.constant ~default:0.)
-    |> M.of_infinite_matrix ~dim:5
+    |> M.of_infinite_matrix ~dimx:5 ~dimy:5
   in
   let to_sexp m =
     M.to_matrix m
     |> List.sexp_of_t (List.sexp_of_t Float.sexp_of_t)
   in
   let _lu_test =
-    match M.lu magic with
+    match M.plu magic with
     | None -> false
-    | Some (l, u) ->
-      match M.(l * u) with
-      | None -> false
-      | Some m -> Sexp.equal (to_sexp magic) (to_sexp m)
+    | Some (p, l, u) ->
+      let m = M.Exn.(p * l * u) in
+      Sexp.equal (to_sexp magic) (to_sexp m)
   in
   ()
 
