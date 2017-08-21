@@ -205,7 +205,7 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
     else
       None
 
-  let solve_from_plu ~p ~l ~u ~vector =
+  let solve_from_plu (p, l, u) ~vector =
     let divided_by_zero = ref false in
     let solve_l ~l ~b =
       let y = copy b in
@@ -240,7 +240,7 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
   let solve ~matrix ~vector =
     match plu matrix with
     | None -> None
-    | Some (p, l, u) -> solve_from_plu ~p ~l ~u ~vector
+    | Some (p, l, u) -> solve_from_plu (p, l, u) ~vector
 
   let inverse t =
     match plu t with
@@ -255,7 +255,7 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
           ; matrix = Array.transpose_exn [| inv'.matrix.(i) |]
           }
         in
-        match solve_from_plu ~p ~l ~u ~vector with
+        match solve_from_plu (p, l, u) ~vector with
         | None -> failed := true
         | Some x -> inv'.matrix.(i) <- (transpose x).matrix.(0)
       done;

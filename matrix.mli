@@ -58,6 +58,8 @@ module Make(Floatlike : Floatlike.For_matrix) : sig
   (** Solve the linear equation Ax = b for x given a matrix A and a vector b. *)
   val solve : matrix:t -> vector:t -> t option
 
+  val solve_from_plu : t * t * t -> vector:t -> t option
+
   val inverse : t -> t option
 
   module Exn : sig
