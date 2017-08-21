@@ -55,6 +55,11 @@ module Make(Floatlike : Floatlike.For_matrix) : sig
       product should be the original matrix. *)
   val plu : t -> (t * t * t) option
 
+  (** Solve the linear equation Ax = b for x given a matrix A and a vector b. *)
+  val solve : matrix:t -> vector:t -> t option
+
+  val inverse : t -> t option
+
   module Exn : sig
     val pointwise : t -> t -> f:(Floatlike.t -> Floatlike.t -> Floatlike.t) -> t
 
@@ -69,7 +74,5 @@ module Make(Floatlike : Floatlike.For_matrix) : sig
     val ( *. ) : t -> t -> t
 
     val ( * ) : t -> t -> t
-
-    val plu : t -> (t * t * t)
   end
 end

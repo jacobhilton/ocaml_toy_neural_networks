@@ -153,9 +153,9 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
       ()
     in
     let { dimx; dimy; matrix = _ } = t in
-    let p' = id ~dim:dimx in
     if Int.equal dimx dimy then
       begin
+        let p' = id ~dim:dimx in
         let t' = copy t in
         let divided_by_zero = ref false in
         for k = 0 to Int.(dimx - 1) do
@@ -205,6 +205,62 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
     else
       None
 
+  let solve_from_plu ~p ~l ~u ~vector =
+    let divided_by_zero = ref false in
+    let solve_l ~l ~b =
+      let y = copy b in
+      for i = 0 to Int.(b.dimx - 1) do
+        for j = 0 to Int.(i - 1) do
+          y.matrix.(i).(0) <-
+            Floatlike.(y.matrix.(i).(0) - l.matrix.(i).(j) * y.matrix.(j).(0))
+        done;
+        if Floatlike.(equal l.matrix.(i).(i) zero) then
+          divided_by_zero := true;
+        y.matrix.(i).(0) <- Floatlike.(y.matrix.(i).(0) / l.matrix.(i).(i))
+      done;
+      y
+    in
+    match (transpose p) * vector with
+    | None -> None
+    | Some b ->
+      if Int.equal b.dimy 1 then
+        let y = solve_l ~l ~b in
+        let flip_x = Array.iter ~f:Array.rev_inplace in
+        let flip_y = Array.rev_inplace in
+        let u' = copy u in
+        flip_x u'.matrix;
+        flip_y u'.matrix;
+        flip_y y.matrix;
+        let x = solve_l ~l:u' ~b:y in
+        flip_y x.matrix;
+        if !divided_by_zero then None else Some x
+      else
+        None
+
+  let solve ~matrix ~vector =
+    match plu matrix with
+    | None -> None
+    | Some (p, l, u) -> solve_from_plu ~p ~l ~u ~vector
+
+  let inverse t =
+    match plu t with
+    | None -> None
+    | Some (p, l, u) ->
+      let inv' = id ~dim:t.dimx in
+      let failed = ref false in
+      for i = 0 to Int.(t.dimx - 1) do
+        let vector =
+          { dimx = t.dimx
+          ; dimy = 1
+          ; matrix = Array.transpose_exn [| inv'.matrix.(i) |]
+          }
+        in
+        match solve_from_plu ~p ~l ~u ~vector with
+        | None -> failed := true
+        | Some x -> inv'.matrix.(i) <- (transpose x).matrix.(0)
+      done;
+      if !failed then None else Some (transpose inv')
+
   module Exn = struct
     let value_exn s = function
       | Some t -> t
@@ -225,7 +281,5 @@ module Make(Floatlike : Floatlike.For_matrix) = struct
     let ( *. ) t1 t2 = value_exn "( *. )" (( *. ) t1 t2)
 
     let ( * ) t1 t2 = value_exn "( * )" (( * ) t1 t2)
-
-    let plu t = value_exn "plu" (plu t)
   end
 end
