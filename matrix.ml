@@ -237,7 +237,7 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
     else
       None
 
-  let solve_from_plu ?(robust=false) (p, l, u) ~vector =
+  let solve_from_plu ~robust (p, l, u) ~vector =
     let divided_by_zero = ref false in
     let solve_l ~l ~b =
       let y = copy b in
@@ -269,10 +269,15 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
       else
         None
 
-  let solve ?(robust=false) t ~vector =
+  let solve ?(robust=false) t =
     match plu ~robust t with
     | None -> None
-    | Some (p, l, u) -> solve_from_plu ~robust (p, l, u) ~vector
+    | Some (p, l, u) -> Some (solve_from_plu ~robust (p, l, u))
+
+  let solve' ?robust t =
+    match solve ?robust t with
+    | None -> (fun ~vector:_ -> None)
+    | Some f -> f
 
   let inverse ?(robust=false) t =
     match plu ~robust t with

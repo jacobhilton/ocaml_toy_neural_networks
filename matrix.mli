@@ -65,15 +65,18 @@ module Numeric(Floatlike : Floatlike.For_matrix) : sig
   (** Matrix multiplication *)
   val ( * ) : t -> t -> t option
 
-  (** LU decomposition with pivoting. If three matrices are returned, then their
-      product should be the original matrix. *)
+  (** LU decomposition with pivoting to find a permutation matrix p, a lower
+      triangular matrix l and an upper triangular matrix u such that p * l * u
+      is equal to the original matrix *)
   val plu : ?robust:bool -> t -> (t * t * t) option
 
   (** Solve the linear equation Ax = b for x given a matrix A and a vector b. *)
-  val solve : ?robust:bool -> t -> vector:t -> t option
+  val solve : ?robust:bool -> t -> (vector:t -> t option) option
 
-  val solve_from_plu : ?robust:bool -> t * t * t -> vector:t -> t option
+  val solve' : ?robust:bool -> t -> vector:t -> t option
 
+  (** [inverse ~robust:true t] returns [None] if t is singular up to robust
+      comparison tolerance. *)
   val inverse : ?robust:bool -> t -> t option
 
   module Exn : sig
