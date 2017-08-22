@@ -7,6 +7,7 @@ module type For_matrix = sig
   val ( * ) : t -> t -> t
   val (/) : t -> t -> t
   val equal : t -> t -> bool
+  val robustly_compare : t -> t -> int
   val (>) : t -> t -> bool
   val abs : t -> t
 end
