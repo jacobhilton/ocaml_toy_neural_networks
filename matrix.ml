@@ -130,22 +130,6 @@ end
 module Numeric(Floatlike : Floatlike.For_matrix) = struct
   type nonrec t = Floatlike.t t
 
-  let equal_entry ~robust x1 x2 =
-    if robust then
-      Int.equal (Floatlike.robustly_compare x1 x2) 0
-    else
-      Floatlike.equal x1 x2
-
-  let equal ?(robust=false) t1 t2 =
-    let are_equal = ref true in
-    match
-      pointwise t1 t2 ~f:(fun x1 x2 ->
-        if equal_entry ~robust x1 x2 then () else are_equal := false
-      )
-    with
-    | None -> false
-    | Some _unit_matrix -> !are_equal
-
   let id ~dim =
     { dimx = dim
     ; dimy = dim
@@ -178,126 +162,6 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
     else
       None
 
-  let plu ?(robust=false) t =
-    let swap_rows t i j =
-      let row = t.matrix.(i) in
-      t.matrix.(i) <- t.matrix.(j);
-      t.matrix.(j) <- row;
-      ()
-    in
-    if Int.equal t.dimx t.dimy then
-      begin
-        let p' = id ~dim:t.dimx in
-        let t' = copy t in
-        let divided_by_zero = ref false in
-        for k = 0 to Int.(t.dimx - 1) do
-          let index_of_max_abs =
-            let init = (k, Floatlike.abs t'.matrix.(k).(k)) in
-            Array.foldi t'.matrix ~init ~f:(fun i (index, max_abs) row ->
-              let x = Floatlike.abs row.(k) in
-              if Int.(i > k) && Floatlike.(x > max_abs) then
-                (i, x)
-              else
-                (index, max_abs)
-            )
-            |> fst
-          in
-          swap_rows t' k index_of_max_abs;
-          swap_rows p' k index_of_max_abs;
-          if equal_entry ~robust t'.matrix.(k).(k) Floatlike.zero then
-            divided_by_zero := true;
-          for i = Int.(k + 1) to Int.(t.dimx - 1) do
-            t'.matrix.(i).(k) <-
-              Floatlike.(t'.matrix.(i).(k) / t'.matrix.(k).(k));
-            for j = Int.(k + 1) to Int.(t.dimx - 1) do
-              t'.matrix.(i).(j) <-
-                Floatlike.(t'.matrix.(i).(j) - t'.matrix.(i).(k) * t'.matrix.(k).(j))
-            done
-          done
-        done;
-        let l = constant ~dimx:t.dimx ~dimy:t.dimx Floatlike.zero in
-        let u = constant ~dimx:t.dimx ~dimy:t.dimx Floatlike.zero in
-        for i = 0 to Int.(t.dimx - 1) do
-          for j = 0 to Int.(t.dimx - 1) do
-            match Int.(sign (i - j)) with
-            | Zero ->
-              l.matrix.(i).(j) <- Floatlike.one;
-              u.matrix.(i).(j) <- t'.matrix.(i).(j);
-              ()
-            | Pos ->
-              l.matrix.(i).(j) <- t'.matrix.(i).(j);
-              ()
-            | Neg ->
-              u.matrix.(i).(j) <- t'.matrix.(i).(j);
-              ()
-          done
-        done;
-        if !divided_by_zero then None else Some (transpose p', l, u)
-      end
-    else
-      None
-
-  let solve_from_plu ~robust (p, l, u) ~vector =
-    let divided_by_zero = ref false in
-    let solve_l ~l ~b =
-      let y = copy b in
-      for i = 0 to Int.(b.dimx - 1) do
-        for j = 0 to Int.(i - 1) do
-          y.matrix.(i).(0) <-
-            Floatlike.(y.matrix.(i).(0) - l.matrix.(i).(j) * y.matrix.(j).(0))
-        done;
-        if equal_entry ~robust l.matrix.(i).(i) Floatlike.zero then
-          divided_by_zero := true;
-        y.matrix.(i).(0) <- Floatlike.(y.matrix.(i).(0) / l.matrix.(i).(i))
-      done;
-      y
-    in
-    match (transpose p) * vector with
-    | None -> None
-    | Some b ->
-      if Int.equal b.dimy 1 then
-        let y = solve_l ~l ~b in
-        let flip_across = Array.iter ~f:Array.rev_inplace in
-        let flip_up = Array.rev_inplace in
-        let u' = copy u in
-        flip_across u'.matrix;
-        flip_up u'.matrix;
-        flip_up y.matrix;
-        let x = solve_l ~l:u' ~b:y in
-        flip_up x.matrix;
-        if !divided_by_zero then None else Some x
-      else
-        None
-
-  let solve ?(robust=false) t =
-    match plu ~robust t with
-    | None -> None
-    | Some (p, l, u) -> Some (solve_from_plu ~robust (p, l, u))
-
-  let solve' ?robust t =
-    match solve ?robust t with
-    | None -> (fun ~vector:_ -> None)
-    | Some f -> f
-
-  let inverse ?(robust=false) t =
-    match plu ~robust t with
-    | None -> None
-    | Some (p, l, u) ->
-      let inv' = id ~dim:t.dimx in
-      let failed = ref false in
-      for i = 0 to Int.(t.dimx - 1) do
-        let vector =
-          { dimx = t.dimx
-          ; dimy = 1
-          ; matrix = Array.transpose_exn [| inv'.matrix.(i) |]
-          }
-        in
-        match solve_from_plu ~robust (p, l, u) ~vector with
-        | None -> failed := true
-        | Some x -> inv'.matrix.(i) <- (transpose x).matrix.(0)
-      done;
-      if !failed then None else Some (transpose inv')
-
   module Exn = struct
     let (+) t1 t2 = Exn.value_exn "(+)"((+) t1 t2)
 
@@ -307,4 +171,150 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
 
     let ( * ) t1 t2 = Exn.value_exn "( * )" (( * ) t1 t2)
   end
+
+  module Internal = struct
+    let equal_entry ~robust x1 x2 =
+      if robust then
+        Int.equal (Floatlike.robustly_compare x1 x2) 0
+      else
+        Floatlike.equal x1 x2
+
+    let equal ~robust t1 t2 =
+      let are_equal = ref true in
+      match
+        pointwise t1 t2 ~f:(fun x1 x2 ->
+          if equal_entry ~robust x1 x2 then () else are_equal := false
+        )
+      with
+      | None -> false
+      | Some _unit_matrix -> !are_equal
+
+    let plu ~robust t =
+      let swap_rows t i j =
+        let row = t.matrix.(i) in
+        t.matrix.(i) <- t.matrix.(j);
+        t.matrix.(j) <- row;
+        ()
+      in
+      if Int.equal t.dimx t.dimy then
+        begin
+          let p' = id ~dim:t.dimx in
+          let t' = copy t in
+          let divided_by_zero = ref false in
+          for k = 0 to Int.(t.dimx - 1) do
+            let index_of_max_abs =
+              let init = (k, Floatlike.abs t'.matrix.(k).(k)) in
+              Array.foldi t'.matrix ~init ~f:(fun i (index, max_abs) row ->
+                let x = Floatlike.abs row.(k) in
+                if Int.(i > k) && Floatlike.(x > max_abs) then
+                  (i, x)
+                else
+                  (index, max_abs)
+                )
+              |> fst
+            in
+            swap_rows t' k index_of_max_abs;
+            swap_rows p' k index_of_max_abs;
+            if equal_entry ~robust t'.matrix.(k).(k) Floatlike.zero then
+              divided_by_zero := true;
+            for i = Int.(k + 1) to Int.(t.dimx - 1) do
+              t'.matrix.(i).(k) <-
+                Floatlike.(t'.matrix.(i).(k) / t'.matrix.(k).(k));
+              for j = Int.(k + 1) to Int.(t.dimx - 1) do
+                t'.matrix.(i).(j) <-
+                  Floatlike.(t'.matrix.(i).(j) - t'.matrix.(i).(k) * t'.matrix.(k).(j))
+              done
+            done
+          done;
+          let l = constant ~dimx:t.dimx ~dimy:t.dimx Floatlike.zero in
+          let u = constant ~dimx:t.dimx ~dimy:t.dimx Floatlike.zero in
+          for i = 0 to Int.(t.dimx - 1) do
+            for j = 0 to Int.(t.dimx - 1) do
+              match Int.(sign (i - j)) with
+              | Zero ->
+                l.matrix.(i).(j) <- Floatlike.one;
+                u.matrix.(i).(j) <- t'.matrix.(i).(j);
+                ()
+              | Pos ->
+                l.matrix.(i).(j) <- t'.matrix.(i).(j);
+                ()
+              | Neg ->
+                u.matrix.(i).(j) <- t'.matrix.(i).(j);
+                ()
+            done
+          done;
+          if !divided_by_zero then None else Some (transpose p', l, u)
+        end
+      else
+        None
+
+    let solve_from_plu ~robust (p, l, u) ~vector =
+      let divided_by_zero = ref false in
+      let solve_l ~l ~b =
+        let y = copy b in
+        for i = 0 to Int.(b.dimx - 1) do
+          for j = 0 to Int.(i - 1) do
+            y.matrix.(i).(0) <-
+              Floatlike.(y.matrix.(i).(0) - l.matrix.(i).(j) * y.matrix.(j).(0))
+          done;
+          if equal_entry ~robust l.matrix.(i).(i) Floatlike.zero then
+            divided_by_zero := true;
+          y.matrix.(i).(0) <- Floatlike.(y.matrix.(i).(0) / l.matrix.(i).(i))
+        done;
+        y
+      in
+      match (transpose p) * vector with
+      | None -> None
+      | Some b ->
+        if Int.equal b.dimy 1 then
+          let y = solve_l ~l ~b in
+          let flip_across = Array.iter ~f:Array.rev_inplace in
+          let flip_up = Array.rev_inplace in
+          let u' = copy u in
+          flip_across u'.matrix;
+          flip_up u'.matrix;
+          flip_up y.matrix;
+          let x = solve_l ~l:u' ~b:y in
+          flip_up x.matrix;
+          if !divided_by_zero then None else Some x
+        else
+          None
+
+    let solve ~robust t =
+      match plu ~robust t with
+      | None -> None
+      | Some (p, l, u) -> Some (solve_from_plu ~robust (p, l, u))
+
+    let inverse ~robust t =
+      match plu ~robust t with
+      | None -> None
+      | Some (p, l, u) ->
+        let inv' = id ~dim:t.dimx in
+        let failed = ref false in
+        for i = 0 to Int.(t.dimx - 1) do
+          let vector =
+            { dimx = t.dimx
+            ; dimy = 1
+            ; matrix = Array.transpose_exn [| inv'.matrix.(i) |]
+            }
+          in
+          match solve_from_plu ~robust (p, l, u) ~vector with
+          | None -> failed := true
+          | Some x -> inv'.matrix.(i) <- (transpose x).matrix.(0)
+        done;
+        if !failed then None else Some (transpose inv')
+  end
+
+  let equal ?(robust=false) = Internal.equal ~robust
+
+  let plu ?(robust=false) = Internal.plu ~robust
+
+  let solve ?(robust=false) = Internal.solve ~robust
+
+  let solve' ?(robust=false) t =
+    match Internal.solve ~robust t with
+    | None -> (fun ~vector:_ -> None)
+    | Some f -> f
+
+  let inverse ?(robust=false) = Internal.inverse ~robust
 end

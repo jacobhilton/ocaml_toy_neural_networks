@@ -51,8 +51,6 @@ end
 module Numeric(Floatlike : Floatlike.For_matrix) : sig
   type nonrec t = Floatlike.t t
 
-  val equal : ?robust:bool -> t -> t -> bool
-
   val id : dim:int -> t
 
   val (+) : t -> t -> t option
@@ -65,6 +63,8 @@ module Numeric(Floatlike : Floatlike.For_matrix) : sig
   (** Matrix multiplication *)
   val ( * ) : t -> t -> t option
 
+  val equal : ?robust:bool -> t -> t -> bool
+
   (** LU decomposition with pivoting to find a permutation matrix p, a lower
       triangular matrix l and an upper triangular matrix u such that p * l * u
       is equal to the original matrix *)
@@ -75,7 +75,8 @@ module Numeric(Floatlike : Floatlike.For_matrix) : sig
 
   val solve' : ?robust:bool -> t -> vector:t -> t option
 
-  (** [inverse ~robust:true t] returns [None] if t is singular up to robust
+  (** [inverse t] returns [None] if t is singlular.
+      [inverse ~robust:true t] returns [None] if t is singular up to robust
       comparison tolerance. *)
   val inverse : ?robust:bool -> t -> t option
 
