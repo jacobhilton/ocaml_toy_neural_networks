@@ -70,9 +70,9 @@ module Numeric(Floatlike : Floatlike.For_matrix) : sig
   val plu : ?robust:bool -> t -> (t * t * t) option
 
   (** Solve the linear equation Ax = b for x given a matrix A and a vector b. *)
-  val solve : ?robust:bool -> matrix:(t) -> vector:(t) -> t option
+  val solve : ?robust:bool -> t -> vector:t -> t option
 
-  val solve_from_plu : ?robust:bool -> t * t * t -> vector:(t) -> t option
+  val solve_from_plu : ?robust:bool -> t * t * t -> vector:t -> t option
 
   val inverse : ?robust:bool -> t -> t option
 

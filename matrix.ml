@@ -269,8 +269,8 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
       else
         None
 
-  let solve ?(robust=false) ~matrix ~vector =
-    match plu ~robust matrix with
+  let solve ?(robust=false) t ~vector =
+    match plu ~robust t with
     | None -> None
     | Some (p, l, u) -> solve_from_plu ~robust (p, l, u) ~vector
 
