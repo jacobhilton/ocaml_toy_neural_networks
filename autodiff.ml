@@ -1,5 +1,30 @@
 open Core
 
+module type S = sig
+  type t
+
+  val zero : t
+  val one : t
+  val two : t
+  val (+) : t -> t -> t
+  val (-) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val scale : t -> float -> t
+  val int_pow : t -> Int.t -> t
+  val (/) : t -> t -> t
+  val exp : t -> t
+  val log : t -> t
+  val ( ** ) : t -> t -> t
+  val sin : t -> t
+  val cos : t -> t
+  val tan : t -> t
+  val abs : t -> t
+  val step : t -> t
+  val relu : t -> t
+  val softplus : t -> t
+  val sigmoid : t -> t
+end
+
 module Make (Floatlike : Floatlike.For_autodiff) = struct
   module OneD = struct
     type t =
@@ -19,6 +44,8 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     let zero = c Floatlike.zero
 
     let one = c Floatlike.one
+
+    let two = c Floatlike.(one + one)
 
     let x =
       { f = Fn.id
@@ -45,45 +72,87 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
       ; f' = Lazy.from_fun (fun () -> compose (d g) h * d h)
       }
 
-    let scale k =
-      { f = (fun y -> Floatlike.scale y k)
-      ; f' = Lazy.from_fun (fun () -> (c Floatlike.(scale one k)))
-      }
-
-    let rec int_pow n =
-      { f = (fun y -> Floatlike.int_pow y n)
-      ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int n)) (int_pow (Int.pred n)))
-      }
-
-    let exp =
-      let rec exp' () =
-        { f = Floatlike.exp
-        ; f' = Lazy.from_fun (fun () -> exp' ()) }
-      in
-      exp' ()
-
-    let log =
-      { f = Floatlike.log
-      ; f' = Lazy.from_fun (fun () -> int_pow (-1))
-      }
-
-    let sin, cos =
-      let rec sin' () =
-        { f = Floatlike.sin
-        ; f' = Lazy.from_fun (fun () -> cos' ()) }
-      and cos' () =
-        { f = Floatlike.cos
-        ; f' = Lazy.from_fun (fun () -> zero - sin' ()) }
-      in
-      sin' (), cos' ()
-
-    let abs =
-      let rec abs' () =
-        { f = Floatlike.abs
-        ; f' = Lazy.from_fun (fun () -> abs' () * int_pow (-1))
+    module Uncomposed = struct
+      let scale k =
+        { f = (fun y -> Floatlike.scale y k)
+        ; f' = Lazy.from_fun (fun () -> (c Floatlike.(scale one k)))
         }
-      in
-      abs' ()
+
+      let rec int_pow n =
+        { f = (fun y -> Floatlike.int_pow y n)
+        ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int n)) (int_pow (Int.pred n)))
+        }
+
+      let (/) g h = g * (compose (int_pow (-1)) h)
+
+      let exp =
+        let rec exp' () =
+          { f = Floatlike.exp
+          ; f' = Lazy.from_fun (fun () -> exp' ()) }
+        in
+        exp' ()
+
+      let log =
+        { f = Floatlike.log
+        ; f' = Lazy.from_fun (fun () -> int_pow (-1))
+        }
+
+      let sin, cos =
+        let rec sin' () =
+          { f = Floatlike.sin
+          ; f' = Lazy.from_fun (fun () -> cos' ()) }
+        and cos' () =
+          { f = Floatlike.cos
+          ; f' = Lazy.from_fun (fun () -> zero - sin' ()) }
+        in
+        sin' (), cos' ()
+
+      let tan = sin / cos
+
+      let abs =
+        let rec abs' () =
+          { f = Floatlike.abs
+          ; f' = Lazy.from_fun (fun () -> abs' () * int_pow (-1))
+          }
+        in
+        abs' ()
+
+      let step = (abs + x) / (two * x)
+
+      let relu = (abs + x) / two
+
+      let softplus = compose log (one + exp)
+
+      let sigmoid = one / (one + compose exp (zero - x))
+    end
+
+    let scale t k = compose (Uncomposed.scale k) t
+
+    let int_pow t n = compose (Uncomposed.int_pow n) t
+
+    let (/) = Uncomposed.(/)
+
+    let exp t = compose Uncomposed.exp t
+
+    let log t = compose Uncomposed.log t
+
+    let ( ** ) g h = exp (h * log g)
+
+    let sin t = compose Uncomposed.sin t
+
+    let cos t = compose Uncomposed.cos t
+
+    let tan t = compose Uncomposed.tan t
+
+    let abs t = compose Uncomposed.abs t
+
+    let step t = compose Uncomposed.step t
+
+    let relu t = compose Uncomposed.relu t
+
+    let softplus t = compose Uncomposed.softplus t
+
+    let sigmoid t = compose Uncomposed.sigmoid t
   end
 
   type t =
@@ -139,31 +208,31 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad h) ~f:(fun dh -> compose (OneD.d g) h * dh))
     }
 
-  let scale t k = compose (OneD.scale k) t
+  let scale t k = compose (OneD.Uncomposed.scale k) t
 
-  let int_pow t n = compose (OneD.int_pow n) t
+  let int_pow t n = compose (OneD.Uncomposed.int_pow n) t
 
   let (/) g h = g * (int_pow h (-1))
 
-  let exp t = compose OneD.exp t
-
-  let log t = compose OneD.log t
+  let exp t = compose OneD.Uncomposed.exp t
+ 
+  let log t = compose OneD.Uncomposed.log t
 
   let ( ** ) g h = exp (h * log g)
 
-  let sin t = compose OneD.sin t
+  let sin t = compose OneD.Uncomposed.sin t
 
-  let cos t = compose OneD.cos t
+  let cos t = compose OneD.Uncomposed.cos t
 
-  let tan t = sin t / cos t
+  let tan t = compose OneD.Uncomposed.tan t
 
-  let abs t = compose OneD.abs t
+  let abs t = compose OneD.Uncomposed.abs t
 
-  let step t = ((abs t) + t) / (two * t)
+  let step t = compose OneD.Uncomposed.step t
 
-  let relu t = ((abs t) + t) / two
+  let relu t = compose OneD.Uncomposed.relu t
 
-  let softplus t = log (one + exp t)
+  let softplus t = compose OneD.Uncomposed.softplus t
 
-  let sigmoid t = one / (one + exp (zero - t))
+  let sigmoid t = compose OneD.Uncomposed.sigmoid t
 end
