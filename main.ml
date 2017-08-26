@@ -20,11 +20,13 @@ let main ~numbers:_ =
   let module Autodiff = Autodiff.Make(Float) in
   let _f = Autodiff.(sin ((c 1.) + x_0 + x_1)) in
   let _f = Autodiff.((exp ((c 3.) * x_0 * x_1)) + (c 4.) * (int_pow x_0 3)) in
-  let f = Autodiff.(x_0 * x_1) in
-  let root = Newton.find_root ~iterations:100 f in
-  match Infinite_list.split_n root 2 |> fst with
-  | a :: b :: [] -> printf "root: %f %f" a b
-  | _ -> ()
+  let _f = Autodiff.((int_pow (x_0+x_1+(c 12.)) 2) - (c 1.)) in
+  let f = Autodiff.OneD.(exp x - (c 2.)) in
+  let root = Newton.find_root ~iterations:999 f in
+  printf "root: %f" root
+  (* match Infinite_list.split_n root 2 |> fst with *)
+  (* | a :: b :: [] -> printf "root: %f %f" a b *)
+  (* | _ -> () *)
 
 let () =
   let open Command.Let_syntax in
