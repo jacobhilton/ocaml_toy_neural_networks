@@ -16,6 +16,7 @@ let main ~numbers:_ =
   let f = Autodiff.Float.(zero - (int_pow (x_0 - (c 2.)) 2 + int_pow (x_1 - (c 3.)) 2)) in
   let a = Newton.find_stationary ~dim:2 ~iterations:100 f in
   printf "%s %f %f" (Newton.Status.to_string (snd a)) (List.nth_exn (fst a) 0) (List.nth_exn (fst a) 1);
+  let _ = Neural_network.create in
   ()
 
 
