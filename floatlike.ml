@@ -1,3 +1,9 @@
+module Float = struct
+  include Core.Float
+
+  let ( ** ) = ( ** )
+end
+
 module type For_matrix = sig
   type t
   val zero : t
@@ -19,8 +25,9 @@ module type For_autodiff = sig
   val (+) : t -> t -> t
   val (-) : t -> t -> t
   val ( * ) : t -> t -> t
-  val scale : t -> float -> t
   val int_pow : t -> int -> t
+  val of_int : int -> t
+  val ( ** ) : t -> t -> t
   val exp : t -> t
   val log : t -> t
   val sin : t -> t

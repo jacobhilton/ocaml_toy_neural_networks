@@ -2,16 +2,19 @@ open Core
 
 module type S = sig
   type t
+  type floatlike
 
+  val c : floatlike -> t
   val zero : t
   val one : t
   val two : t
+  val scale : t -> floatlike -> t
   val (+) : t -> t -> t
   val (-) : t -> t -> t
   val ( * ) : t -> t -> t
-  val scale : t -> float -> t
-  val int_pow : t -> Int.t -> t
+  val int_pow : t -> int -> t
   val (/) : t -> t -> t
+  val pow : t -> floatlike -> t
   val exp : t -> t
   val log : t -> t
   val ( ** ) : t -> t -> t
@@ -26,7 +29,7 @@ module type S = sig
 end
 
 module Make (Floatlike : Floatlike.For_autodiff) = struct
-  module OneD = struct
+  module Univar = struct
     type t =
       { f : Floatlike.t -> Floatlike.t
       ; f' : t Lazy.t
@@ -52,6 +55,10 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
       ; f' = Lazy.from_fun (fun () -> one)
       }
 
+    let rec scale t k =
+      { f = (fun y -> Floatlike.( * ) k (eval t y))
+      ; f' = Lazy.from_fun (fun () -> scale (d t) k)
+      }
     let rec (+) g h =
       { f = (fun y -> Floatlike.(+) (eval g y) (eval h y))
       ; f' = Lazy.from_fun (fun () -> d g + d h)
@@ -73,17 +80,23 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
       }
 
     module Uncomposed = struct
-      let scale k =
-        { f = (fun y -> Floatlike.scale y k)
-        ; f' = Lazy.from_fun (fun () -> (c Floatlike.(scale one k)))
-        }
-
-      let rec int_pow n =
-        { f = (fun y -> Floatlike.int_pow y n)
-        ; f' = Lazy.from_fun (fun () -> compose (scale (Float.of_int n)) (int_pow (Int.pred n)))
-        }
+      let int_pow n =
+        let rec int_pow_and_scale n k =
+          { f = (fun y -> Floatlike.(k * int_pow y n))
+          ; f' = Lazy.from_fun (fun () -> int_pow_and_scale (Int.pred n) Floatlike.(of_int n * k))
+          }
+        in
+        int_pow_and_scale n Floatlike.one
 
       let (/) g h = g * (compose (int_pow (-1)) h)
+
+      let pow p =
+        let rec pow_and_scale ~power:p k =
+          { f = (fun y -> Floatlike.(k * (y ** p)))
+          ; f' = Lazy.from_fun (fun () -> pow_and_scale ~power:Floatlike.(p - one) Floatlike.(p * k))
+          }
+        in
+        pow_and_scale ~power:p Floatlike.one
 
       let exp =
         let rec exp' () =
@@ -103,7 +116,7 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
           ; f' = Lazy.from_fun (fun () -> cos' ()) }
         and cos' () =
           { f = Floatlike.cos
-          ; f' = Lazy.from_fun (fun () -> zero - sin' ()) }
+          ; f' = Lazy.from_fun (fun () -> scale (sin' ()) Floatlike.(zero - one)) }
         in
         sin' (), cos' ()
 
@@ -123,14 +136,14 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
       let softplus = compose log (one + exp)
 
-      let sigmoid = one / (one + compose exp (zero - x))
+      let sigmoid = one / (one + compose exp (scale x Floatlike.(zero - one)))
     end
-
-    let scale t k = compose (Uncomposed.scale k) t
 
     let int_pow t n = compose (Uncomposed.int_pow n) t
 
     let (/) = Uncomposed.(/)
+
+    let pow t p = compose (Uncomposed.pow p) t
 
     let exp t = compose Uncomposed.exp t
 
@@ -188,6 +201,10 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
   let x_2 = x_i 2
 
+  let rec scale t k =
+    { f = (fun y -> Floatlike.( * ) k (eval t y))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad t) ~f:(fun dt -> scale dt k))
+    }
   let rec (+) g h =
     { f = (fun y -> Floatlike.(+) (eval g y) (eval h y))
     ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (grad g) (grad h) ~f:(+))
@@ -204,35 +221,35 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     }
 
   let rec compose g h =
-    { f = (fun y -> (OneD.eval g (eval h y)))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad h) ~f:(fun dh -> compose (OneD.d g) h * dh))
+    { f = (fun y -> (Univar.eval g (eval h y)))
+    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad h) ~f:(fun dh -> compose (Univar.d g) h * dh))
     }
 
-  let scale t k = compose (OneD.Uncomposed.scale k) t
-
-  let int_pow t n = compose (OneD.Uncomposed.int_pow n) t
+  let int_pow t n = compose (Univar.Uncomposed.int_pow n) t
 
   let (/) g h = g * (int_pow h (-1))
 
-  let exp t = compose OneD.Uncomposed.exp t
+  let pow t p = compose (Univar.Uncomposed.pow p) t
+
+  let exp t = compose Univar.Uncomposed.exp t
  
-  let log t = compose OneD.Uncomposed.log t
+  let log t = compose Univar.Uncomposed.log t
 
   let ( ** ) g h = exp (h * log g)
 
-  let sin t = compose OneD.Uncomposed.sin t
+  let sin t = compose Univar.Uncomposed.sin t
 
-  let cos t = compose OneD.Uncomposed.cos t
+  let cos t = compose Univar.Uncomposed.cos t
 
-  let tan t = compose OneD.Uncomposed.tan t
+  let tan t = compose Univar.Uncomposed.tan t
 
-  let abs t = compose OneD.Uncomposed.abs t
+  let abs t = compose Univar.Uncomposed.abs t
 
-  let step t = compose OneD.Uncomposed.step t
+  let step t = compose Univar.Uncomposed.step t
 
-  let relu t = compose OneD.Uncomposed.relu t
+  let relu t = compose Univar.Uncomposed.relu t
 
-  let softplus t = compose OneD.Uncomposed.softplus t
+  let softplus t = compose Univar.Uncomposed.softplus t
 
-  let sigmoid t = compose OneD.Uncomposed.sigmoid t
+  let sigmoid t = compose Univar.Uncomposed.sigmoid t
 end
