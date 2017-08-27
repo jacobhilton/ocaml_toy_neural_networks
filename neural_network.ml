@@ -76,6 +76,7 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
         let flattened_parameters =
           List.map parameters_backwards
             ~f:(List.map ~f:(fun (`Bias p, `Indexed ps) -> p :: ps))
+          |> List.rev
           |> List.concat
           |> List.concat
         in
@@ -85,10 +86,11 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
               Int.equal (Parameter.compare p1 p2) 0)
             |> Option.map ~f:fst)
         in
-        let output_of_autodiffs =
+        let output_autodiff =
           List.fold parameters_backwards ~init:Fn.id
             ~f:(fun output_of_last_layers layer_parameters ->
               fun inputs ->
+                let output_of_this_layer =
                 List.map layer_parameters
                   ~f:(fun (`Bias bias_parameter, `Indexed indexed_parameters) ->
                     let autodiff_of_parameter p =
@@ -97,14 +99,15 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
                     List.foldi indexed_parameters
                       ~init:(autodiff_of_parameter bias_parameter)
                       ~f:(fun node_from_index acc indexed_parameter ->
-                          Autodiff.Float.(
-                            acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
+                        Autodiff.Float.(
+                          acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
                     |> Autodiff.Float.compose_univar activation)
-                |> output_of_last_layers)
+                in
+                output_of_last_layers output_of_this_layer)
         in
         let output input =
           if Int.equal (List.length input) (Layer.to_int input_layer) then
-            output_of_autodiffs (List.map input ~f:(fun x -> Autodiff.Float.c x))
+            output_autodiff (List.map input ~f:(fun x -> Autodiff.Float.c x))
             |> List.hd_exn
           else
             failwithf "Neural network input has length %i, expected length %i"
