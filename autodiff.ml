@@ -108,7 +108,13 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
       let softplus = compose log (one + exp)
 
-      let sigmoid = one / (one + compose exp (scale x Floatlike.(zero - one)))
+      let sigmoid =
+        let rec sigmoid' () =
+          { f = (fun y -> Floatlike.(one * int_pow (one + exp ((zero - one) * y)) (-1)))
+          ; f' = Lazy.from_fun (fun () -> sigmoid' () * (one - sigmoid' ()))
+          }
+        in
+        sigmoid' ()
     end
 
     let int_pow t n = compose (Uncomposed.int_pow n) t
@@ -192,38 +198,55 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (grad g) (grad h) ~f:(fun dg dh -> g * dh + dg * h))
     }
 
-  let rec compose g h =
+  let rec compose_univar g h =
     { f = (fun y -> (Univar.eval g (eval h y)))
-    ; f' = Lazy.from_fun (fun () -> Infinite_list.map (grad h) ~f:(fun dh -> compose (Univar.d g) h * dh))
+    ; f' = Lazy.from_fun (fun () ->
+          let dg_of_h = compose_univar (Univar.d g) h in
+          Infinite_list.map (grad h) ~f:(fun dh -> dg_of_h * dh))
     }
 
-  let int_pow t n = compose (Univar.Uncomposed.int_pow n) t
+  let rec compose g hs =
+    { f = (fun y -> eval g (Infinite_list.map hs ~f:(fun h -> eval h y)))
+    ; f' = Lazy.from_fun (fun () ->
+          let grad_g_of_hs =
+            Infinite_list.map (grad g) ~f:(fun dg -> compose dg hs)
+          in
+          let grad_hs = Infinite_list.map hs ~f:grad in
+          let grad_hs_transposed = Infinite_list.transpose grad_hs in
+          Infinite_list.map grad_hs_transposed ~f:(fun dh ->
+            let terms = Infinite_list.map2 grad_g_of_hs dh ~f:( * ) in
+            Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
+    }
+
+  let compose' g hs = compose g (Infinite_list.of_list hs ~default:zero)
+
+  let int_pow t n = compose_univar (Univar.Uncomposed.int_pow n) t
 
   let (/) g h = g * (int_pow h (-1))
 
-  let pow t p = compose (Univar.Uncomposed.pow p) t
+  let pow t p = compose_univar (Univar.Uncomposed.pow p) t
 
-  let exp t = compose Univar.Uncomposed.exp t
+  let exp t = compose_univar Univar.Uncomposed.exp t
  
-  let log t = compose Univar.Uncomposed.log t
+  let log t = compose_univar Univar.Uncomposed.log t
 
   let ( ** ) g h = exp (h * log g)
 
-  let sin t = compose Univar.Uncomposed.sin t
+  let sin t = compose_univar Univar.Uncomposed.sin t
 
-  let cos t = compose Univar.Uncomposed.cos t
+  let cos t = compose_univar Univar.Uncomposed.cos t
 
-  let tan t = compose Univar.Uncomposed.tan t
+  let tan t = compose_univar Univar.Uncomposed.tan t
 
-  let abs t = compose Univar.Uncomposed.abs t
+  let abs t = compose_univar Univar.Uncomposed.abs t
 
-  let step t = compose Univar.Uncomposed.step t
+  let step t = compose_univar Univar.Uncomposed.step t
 
-  let relu t = compose Univar.Uncomposed.relu t
+  let relu t = compose_univar Univar.Uncomposed.relu t
 
-  let softplus t = compose Univar.Uncomposed.softplus t
+  let softplus t = compose_univar Univar.Uncomposed.softplus t
 
-  let sigmoid t = compose Univar.Uncomposed.sigmoid t
+  let sigmoid t = compose_univar Univar.Uncomposed.sigmoid t
 end
 
 module Float = Make(Floatlike.Float)

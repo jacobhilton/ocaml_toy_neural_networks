@@ -59,7 +59,11 @@ module type S = sig
 
   val x_2 : t
 
-  val compose : Univar.t -> t -> t
+  val compose_univar : Univar.t -> t -> t
+
+  val compose : t -> t Infinite_list.t -> t
+
+  val compose' : t -> t list -> t
 
   include Common with type t := t and type floatlike := floatlike
 end

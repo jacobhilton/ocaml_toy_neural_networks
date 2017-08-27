@@ -3,6 +3,7 @@ module Status : sig
     | Converged
     | Failed
     | Iterating
+  [@@ deriving sexp]
 
   val to_string : t -> string
 end

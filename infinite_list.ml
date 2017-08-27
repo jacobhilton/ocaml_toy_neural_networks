@@ -48,3 +48,13 @@ let map2 { list = list1; default = default1 } { list = list2; default = default2
   { list = List.map2_exn list1 list2 ~f
   ; default = f default1 default2
   }
+
+let fold { list; default } ~init ~f ~f_default =
+  f_default (List.fold list ~init ~f) default
+
+let transpose t =
+  let f acc s = Int.max acc (List.length s.list) in
+  let max_length = fold t ~init:0 ~f ~f_default:f in
+  { list = List.init max_length ~f:(fun n -> map t ~f:(fun s -> nth_exn s n))
+  ; default = map t ~f:(fun s -> nth_exn s max_length)
+  }

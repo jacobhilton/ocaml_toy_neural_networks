@@ -99,7 +99,7 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
                       ~f:(fun node_from_index acc indexed_parameter ->
                           Autodiff.Float.(
                             acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
-                    |> Autodiff.Float.compose activation)
+                    |> Autodiff.Float.compose_univar activation)
                 |> output_of_last_layers)
         in
         let output input =

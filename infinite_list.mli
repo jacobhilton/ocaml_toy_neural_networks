@@ -13,3 +13,12 @@ val split_n : 'a t -> int -> 'a list * 'a t
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+val fold
+  :  'a t
+  -> init:'accum
+  -> f:('accum -> 'a -> 'accum)
+  -> f_default:('accum -> 'a -> 'accum)
+  -> 'accum
+
+val transpose : 'a t t -> 'a t t
