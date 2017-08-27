@@ -91,17 +91,17 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
             ~f:(fun output_of_last_layers layer_parameters ->
               fun inputs ->
                 let output_of_this_layer =
-                List.map layer_parameters
-                  ~f:(fun (`Bias bias_parameter, `Indexed indexed_parameters) ->
-                    let autodiff_of_parameter p =
-                      Autodiff.Float.x_i (Option.value_exn (index_of_parameter p))
-                    in
-                    List.foldi indexed_parameters
-                      ~init:(autodiff_of_parameter bias_parameter)
-                      ~f:(fun node_from_index acc indexed_parameter ->
-                        Autodiff.Float.(
-                          acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
-                    |> Autodiff.Float.compose_univar activation)
+                  List.map layer_parameters
+                    ~f:(fun (`Bias bias_parameter, `Indexed indexed_parameters) ->
+                      let autodiff_of_parameter p =
+                        Autodiff.Float.x_i (Option.value_exn (index_of_parameter p))
+                      in
+                      List.foldi indexed_parameters
+                        ~init:(autodiff_of_parameter bias_parameter)
+                        ~f:(fun node_from_index acc indexed_parameter ->
+                          Autodiff.Float.(
+                            acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
+                      |> Autodiff.Float.compose_univar activation)
                 in
                 output_of_last_layers output_of_this_layer)
         in
