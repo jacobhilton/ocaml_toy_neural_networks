@@ -3,6 +3,7 @@ open Core
 module Layer = struct
   type t = Nodes of int
 
+  let of_int i = Nodes i
   let to_int (Nodes i) = i
 end
 
@@ -39,10 +40,10 @@ type t =
   ; output : float list -> Autodiff.Float.t
   }
         
-let create ~activation ~layers =
-  match layers with
+let create ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
+  match List.map layers_int ~f:Layer.of_int with
   | [] | _ :: [] -> failwith "Neural_network.create_exn called with too few layers"
-  | input_layer :: layers_after_input ->
+  | input_layer :: layers_after_input as layers ->
     begin
       match List.rev layers_after_input with
       | Layer.Nodes 1 :: hidden_layers_backwards ->
@@ -84,10 +85,8 @@ let create ~activation ~layers =
               Int.equal (Parameter.compare p1 p2) 0)
             |> Option.map ~f:fst)
         in
-        let activate a = Autodiff.Float.compose activation a in
         let output_of_autodiffs =
-          List.fold parameters_backwards
-            ~init:(fun inputs -> activate (List.hd_exn inputs))
+          List.fold parameters_backwards ~init:Fn.id
             ~f:(fun output_of_last_layers layer_parameters ->
               fun inputs ->
                 List.map layer_parameters
@@ -95,29 +94,27 @@ let create ~activation ~layers =
                     let autodiff_of_parameter p =
                       Autodiff.Float.x_i (Option.value_exn (index_of_parameter p))
                     in
-                    let sumproduct =
-                      List.foldi indexed_parameters
-                        ~init:(autodiff_of_parameter bias_parameter)
-                        ~f:(fun node_from_index acc indexed_parameter ->
+                    List.foldi indexed_parameters
+                      ~init:(autodiff_of_parameter bias_parameter)
+                      ~f:(fun node_from_index acc indexed_parameter ->
                           Autodiff.Float.(
                             acc + autodiff_of_parameter indexed_parameter * List.nth_exn inputs node_from_index))
-                    in
-                    activate sumproduct)
+                    |> Autodiff.Float.compose activation)
                 |> output_of_last_layers)
         in
-
         let output input =
           if Int.equal (List.length input) (Layer.to_int input_layer) then
             output_of_autodiffs (List.map input ~f:(fun x -> Autodiff.Float.c x))
+            |> List.hd_exn
           else
             failwithf "Neural network input has length %i, expected length %i"
               (List.length input) (Layer.to_int input_layer) ()
         in
-        Some
-          { layers
-          ; parameters = flattened_parameters
-          ; index_of_parameter
-          ; output }
+        { layers
+        ; parameters = flattened_parameters
+        ; index_of_parameter
+        ; output
+        }
       | _ :: _ | [] ->
         failwith "Neural_network.create_exn called without a final layer with exactly one node"
     end

@@ -1,33 +1,27 @@
 open Core
 
-let main ~numbers:_ =
-  let _magic =
-    [ [17.; 24.; 1.; 8.; 15.]
-    ; [23.; 5.; 7.; 14.; 16.]
-    ; [4.; 6.; 13.; 20.; 22.]
-    ; [10.; 12.; 19.; 21.; 3.]
-    ; [11.; 18.; 25.; 2.; 9.]
-    ]
-    |> List.map ~f:(Infinite_list.of_list ~default:0.)
-    |> Infinite_list.of_list ~default:(Infinite_list.constant ~default:0.)
-    |> Matrix.of_infinite_matrix ~dimx:5 ~dimy:5
-  in
-  let _f = Autodiff.Float.(int_pow x_0 2 + int_pow x_1 2 + (x_0 - (c 2.)) * (x_1 - (c 5.))) in
+let main ~ignored:_ =
   let f = Autodiff.Float.(zero - (int_pow (x_0 - (c 2.)) 2 + int_pow (x_1 - (c 3.)) 2)) in
   let a = Newton.find_stationary ~dim:2 ~iterations:100 f in
-  printf "%s %f %f" (Newton.Status.to_string (snd a)) (List.nth_exn (fst a) 0) (List.nth_exn (fst a) 1);
-  let _ = Neural_network.create in
+  printf "%s %f %f\n" (Newton.Status.to_string (snd a)) (List.nth_exn (fst a) 0) (List.nth_exn (fst a) 1);
+  let nn = Neural_network.create [2; 3; 1] in
+  let out = nn.Neural_network.output [3.; 4.] in
+  printf "%s\n" (Sexp.to_string_hum (List.sexp_of_t Neural_network.Parameter.sexp_of_t nn.Neural_network.parameters));
+  let res = Autodiff.Float.eval' out [-0.5;-0.1;0.2;-0.18;0.32;0.21;-0.25;0.1;0.02;0.22;-0.18;0.23;-0.3] in
+  let sigmoid = Autodiff.Float.Univar.(eval (sigmoid x)) in
+  let res2 = sigmoid (-.0.5 -. 0.1 *. sigmoid (0.32+.0.21*.3.-.0.25*.4.) +.0.2 *. sigmoid (0.1+.0.02*.3.+.0.22*.4.) -. 0.18 *. sigmoid (-.0.18+.0.23*.3.-.0.3*.4.)) in
+  printf "nn %f %f\n" res res2;
   ()
 
 
 let () =
   let open Command.Let_syntax in
   Command.basic'
-    ~summary:"demo"
+    ~summary:"main"
     [%map_open
-      let numbers = flag "numbers" (optional string) ~doc:"S list of numbers separated by commas"
+      let ignored = flag "ignored" no_arg ~doc:" ignored"
       in
       fun () ->
-        main ~numbers
+        main ~ignored
     ]
   |> Command.run
