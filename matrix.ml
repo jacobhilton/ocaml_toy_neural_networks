@@ -318,3 +318,5 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
 
   let inverse ?(robust=false) = Internal.inverse ~robust
 end
+
+module Float = Numeric(Float)

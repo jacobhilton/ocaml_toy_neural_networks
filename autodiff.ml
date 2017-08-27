@@ -1,33 +1,5 @@
 open Core
 
-module type S = sig
-  type t
-  type floatlike
-
-  val c : floatlike -> t
-  val zero : t
-  val one : t
-  val two : t
-  val scale : t -> floatlike -> t
-  val (+) : t -> t -> t
-  val (-) : t -> t -> t
-  val ( * ) : t -> t -> t
-  val int_pow : t -> int -> t
-  val (/) : t -> t -> t
-  val pow : t -> floatlike -> t
-  val exp : t -> t
-  val log : t -> t
-  val ( ** ) : t -> t -> t
-  val sin : t -> t
-  val cos : t -> t
-  val tan : t -> t
-  val abs : t -> t
-  val step : t -> t
-  val relu : t -> t
-  val softplus : t -> t
-  val sigmoid : t -> t
-end
-
 module Make (Floatlike : Floatlike.For_autodiff) = struct
   module Univar = struct
     type t =
@@ -253,3 +225,5 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
   let sigmoid t = compose Univar.Uncomposed.sigmoid t
 end
+
+module Float = Make(Floatlike.Float)

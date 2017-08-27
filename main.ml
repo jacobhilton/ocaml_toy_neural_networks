@@ -1,7 +1,7 @@
 open Core
 
 let main ~numbers:_ =
-  let module M = Matrix.Numeric(Float) in
+  let module M = Matrix.Float in
   let _magic =
     [ [17.; 24.; 1.; 8.; 15.]
     ; [23.; 5.; 7.; 14.; 16.]
@@ -17,7 +17,7 @@ let main ~numbers:_ =
     Matrix.to_matrix m
     |> List.sexp_of_t (List.sexp_of_t Float.sexp_of_t)
   in
-  let module Autodiff = Autodiff.Make(Floatlike.Float) in
+  let module Autodiff = Autodiff.Float in
   let _f = Autodiff.(sin ((c 1.) + x_0 + x_1)) in
   let _f = Autodiff.((exp ((c 3.) * x_0 * x_1)) + (c 4.) * (int_pow x_0 3)) in
   let _f = Autodiff.((int_pow (x_0+x_1+(c 12.)) 2) - (c 1.)) in

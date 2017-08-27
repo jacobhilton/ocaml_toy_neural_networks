@@ -1,8 +1,8 @@
 open Core
 
-module Autodiff = Autodiff.Make(Floatlike.Float)
+module Autodiff = Autodiff.Float
 
-module Matrix_numeric = Matrix.Numeric(Float)
+module Matrix_numeric = Matrix.Float
 
 let equal ~robust x1 x2 =
   if robust then
