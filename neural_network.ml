@@ -40,7 +40,7 @@ type t =
   ; output : float list -> Autodiff.Float.t
   }
         
-let create ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
+let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) layers_int =
   match List.map layers_int ~f:Layer.of_int with
   | [] | _ :: [] -> failwith "Neural_network.create_exn called with too few layers"
   | input_layer :: layers_after_input as layers ->
