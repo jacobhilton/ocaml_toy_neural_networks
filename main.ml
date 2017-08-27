@@ -1,7 +1,6 @@
 open Core
 
 let main ~numbers:_ =
-  let module M = Matrix.Float in
   let _magic =
     [ [17.; 24.; 1.; 8.; 15.]
     ; [23.; 5.; 7.; 14.; 16.]
@@ -13,20 +12,12 @@ let main ~numbers:_ =
     |> Infinite_list.of_list ~default:(Infinite_list.constant ~default:0.)
     |> Matrix.of_infinite_matrix ~dimx:5 ~dimy:5
   in
-  let _to_sexp m =
-    Matrix.to_matrix m
-    |> List.sexp_of_t (List.sexp_of_t Float.sexp_of_t)
-  in
-  let module Autodiff = Autodiff.Float in
-  let _f = Autodiff.(sin ((c 1.) + x_0 + x_1)) in
-  let _f = Autodiff.((exp ((c 3.) * x_0 * x_1)) + (c 4.) * (int_pow x_0 3)) in
-  let _f = Autodiff.((int_pow (x_0+x_1+(c 12.)) 2) - (c 1.)) in
-  let f = Autodiff.Univar.(exp x - (c 2.)) in
-  let root = Newton.find_root ~iterations:999 f in
-  printf "root: %f" root
-  (* match Infinite_list.split_n root 2 |> fst with *)
-  (* | a :: b :: [] -> printf "root: %f %f" a b *)
-  (* | _ -> () *)
+  let _f = Autodiff.Float.(int_pow x_0 2 + int_pow x_1 2 + (x_0 - (c 2.)) * (x_1 - (c 5.))) in
+  let f = Autodiff.Float.(zero - (int_pow (x_0 - (c 2.)) 2 + int_pow (x_1 - (c 3.)) 2)) in
+  let a = Newton.find_stationary ~dim:2 ~iterations:100 f in
+  printf "%s %f %f" (Newton.Status.to_string (snd a)) (List.nth_exn (fst a) 0) (List.nth_exn (fst a) 1);
+  ()
+
 
 let () =
   let open Command.Let_syntax in
