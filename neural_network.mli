@@ -32,7 +32,7 @@ type t =
   { layers : Layer.t list
   ; parameters : Parameter.t list
   ; index_of_parameter : Parameter.t -> int option
-  ; output : float list -> Autodiff.Float.t
+  ; output : float list -> Autodiff.Float.t list
   }
 
 val create_exn
