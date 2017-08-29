@@ -95,12 +95,6 @@ module type S = sig
     val ( + ) : t -> t -> t
 
     val ( - ) : t -> t -> t
-
-    (* val map : t -> f:(unidim -> unidim) -> t *)
-
-    (* val map2 : t -> t -> f:(unidim -> unidim -> unidim) -> t *)
-
-    (* val compose_univar : Univar.t -> t -> t *)
   end
 end
 

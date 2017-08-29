@@ -309,6 +309,8 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     let (+) = plus_or_minus Floatlike.(+) Unidim.(+)
 
     let (-) = plus_or_minus Floatlike.(-) Unidim.(-)
+
+    (* ( * ) and other common, map, map2, compose_univar and other compose *)
   end
 
   include Unidim
