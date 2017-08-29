@@ -14,6 +14,8 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
+val zip : 'a t -> 'b t -> ('a * 'b) t
+
 val fold
   :  'a t
   -> init:'accum

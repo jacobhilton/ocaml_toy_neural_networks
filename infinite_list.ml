@@ -49,6 +49,8 @@ let map2 { list = list1; default = default1 } { list = list2; default = default2
   ; default = f default1 default2
   }
 
+let zip = map2 ~f:(fun x1 x2 -> (x1, x2))
+
 let fold { list; default } ~init ~f ~f_default =
   f_default (List.fold list ~init ~f) default
 
