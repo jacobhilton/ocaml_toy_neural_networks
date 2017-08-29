@@ -251,66 +251,67 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     let sigmoid t = compose_univar Univar.Uncomposed.sigmoid t
   end
 
-  include Unidim
-
   module Multidim = struct
     type unidim = Unidim.t
 
     type t =
-      { f : Floatlike.t Infinite_list.t -> Floatlike.t Infinite_list.t
-      ; f' : Unidim.t Infinite_list.t Infinite_list.t Lazy.t (* the outer list corresponds to the output *)
+      { dim : int
+      ; f : Floatlike.t Infinite_list.t -> Floatlike.t list
+      ; f' : Unidim.t Infinite_list.t list Lazy.t
       }
 
-    let eval { f; f' = _ } y = f y
+    let dim { dim; f = _; f' = _ } = dim
+    
+    let eval { dim = _; f; f' = _ } y = f y
 
-    let jacobian { f = _; f' } = Lazy.force f'
+    let jacobian { dim = _; f = _; f' } = Lazy.force f'
 
     let of_unidims us =
-      { f = (fun ys -> Infinite_list.map us ~f:(fun u -> Unidim.eval u ys))
-      ; f' = Lazy.from_fun (fun () -> Infinite_list.map us ~f:Unidim.grad)
+      { dim = List.length us
+      ; f = (fun ys -> List.map us ~f:(fun u -> Unidim.eval u ys))
+      ; f' = Lazy.from_fun (fun () -> List.map us ~f:Unidim.grad)
       }
 
-    let of_unidims' us = of_unidims (Infinite_list.of_list us ~default:Unidim.zero)
+    let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
 
-    let of_unidim ~dim u = of_unidims' (List.init dim ~f:(Fn.const u))
+    let to_unidims t =
+      List.init (dim t) ~f:(fun i ->
+        { Unidim.f = (fun ys -> List.nth_exn (eval t ys) i)
+        ; f' = Lazy.from_fun (fun () -> List.nth_exn (jacobian t) i)
+        })
 
-    let nth_unidim t i =
-      { Unidim.f = (fun ys -> Infinite_list.nth_exn (eval t ys) i)
-      ; f' = Lazy.from_fun (fun () -> Infinite_list.nth_exn (jacobian t) i)
-      }
-
-    let to_unidims ~dim t = List.init dim ~f:(fun i -> nth_unidim t i)
+    let empty = of_unidims []
 
     let c ~dim y = of_unidim ~dim (Unidim.c y)
 
-    let zero = of_unidims' []
-
-    let x ~dim = of_unidims' (List.init dim ~f:(fun i -> Unidim.x_i i))
+    let x ~dim = of_unidims (List.init dim ~f:(fun i -> Unidim.x_i i))
 
     let scale t k =
-      { f = (fun ys -> Infinite_list.map (eval t ys) ~f:(fun z -> Floatlike.( * ) k z))
-      ; f' = Lazy.from_fun (fun () -> Infinite_list.map (jacobian t) ~f:(Infinite_list.map ~f:(fun dt -> scale dt k)))
+      { dim = dim t
+      ; f = (fun ys -> List.map (eval t ys) ~f:(fun z -> Floatlike.( * ) k z))
+      ; f' = Lazy.from_fun (fun () -> List.map (jacobian t) ~f:(Infinite_list.map ~f:(fun dt -> Unidim.scale dt k)))
       }
 
-    let (+) g h =
-      { f = (fun ys -> Infinite_list.map2 (eval g ys) (eval h ys) ~f:Floatlike.(+))
-      ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (jacobian g) (jacobian h) ~f:(Infinite_list.map2 ~f:(+)))
+    let plus_or_minus floatlike unidim g h =
+      let dim = Int.max (dim g) (dim h) in
+      let to_inf_f = Infinite_list.of_list ~default:Floatlike.zero in
+      let to_inf_u = Infinite_list.(of_list ~default:(constant ~default:Unidim.zero)) in
+      let of_inf l = Infinite_list.split_n l dim |> fst in
+      { dim
+      ; f = (fun ys -> of_inf (
+            Infinite_list.map2 (to_inf_f (eval g ys)) (to_inf_f (eval h ys))
+              ~f:floatlike))
+      ; f' = Lazy.from_fun (fun () -> of_inf (
+            Infinite_list.map2 (to_inf_u (jacobian g)) (to_inf_u (jacobian h))
+              ~f:(Infinite_list.map2 ~f:unidim)))
       }
 
-    let (-) g h =
-      { f = (fun ys -> Infinite_list.map2 (eval g ys) (eval h ys) ~f:Floatlike.(-))
-      ; f' = Lazy.from_fun (fun () -> Infinite_list.map2 (jacobian g) (jacobian h) ~f:(Infinite_list.map2 ~f:(-)))
-      }
+    let (+) = plus_or_minus Floatlike.(+) Unidim.(+)
 
-    let map ~dim t ~f =
-      of_unidims' (List.map (to_unidims ~dim t) ~f)
-
-    let map2 ~dim g h ~f =
-      of_unidims' (List.map2_exn (to_unidims ~dim g) (to_unidims ~dim h) ~f)
-
-    let compose_univar ~dim g h =
-      map ~dim h ~f:(fun h_i -> Unidim.compose_univar g h_i)
+    let (-) = plus_or_minus Floatlike.(-) Unidim.(-)
   end
+
+  include Unidim
 end
 
 module Float = Make(Floatlike.Float)
