@@ -294,16 +294,18 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     let plus_or_minus floatlike unidim g h =
       let dim = Int.max (dim g) (dim h) in
-      let to_inf_f = Infinite_list.of_list ~default:Floatlike.zero in
-      let to_inf_u = Infinite_list.(of_list ~default:(constant ~default:Unidim.zero)) in
-      let of_inf l = Infinite_list.split_n l dim |> fst in
+      let map2 l1 l2 ~f ~default =
+        let l =
+          Infinite_list.map2 (Infinite_list.of_list l1 ~default)
+            (Infinite_list.of_list l2 ~default) ~f
+        in
+        Infinite_list.split_n l dim |> fst
+      in
       { dim
-      ; f = (fun ys -> of_inf (
-            Infinite_list.map2 (to_inf_f (eval g ys)) (to_inf_f (eval h ys))
-              ~f:floatlike))
-      ; f' = Lazy.from_fun (fun () -> of_inf (
-            Infinite_list.map2 (to_inf_u (jacobian g)) (to_inf_u (jacobian h))
-              ~f:(Infinite_list.map2 ~f:unidim)))
+      ; f = (fun ys -> map2 (eval g ys) (eval h ys) ~f:floatlike ~default:Floatlike.zero)
+      ; f' = Lazy.from_fun (fun () ->
+            map2 (jacobian g) (jacobian h) ~f:(Infinite_list.map2 ~f:unidim)
+              ~default:(Infinite_list.constant ~default:Unidim.zero))
       }
 
     let (+) = plus_or_minus Floatlike.(+) Unidim.(+)
