@@ -318,30 +318,6 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
   module Mutidim2 = struct
     type unidim = Unidim.t
 
-    module Deep_list = struct
-      type 'a t =
-        | Element of 'a
-        | List of 'a t Infinite_list.t
-
-      let return e = Element e
-
-      let rec collapse_exn t d =
-        let fail () = failwith "Deep_list.collapse_exn failed" in
-        if Int.(d < 0) then fail () else
-          match d, t with
-          | 0, Element e -> e
-          | 0, List _ | _, Element _ -> fail ()
-          | _, List l -> Infinite_list.map l ~f:(fun s -> collapse_exn s Int.(d - 1))
-
-      let rec map ~f = function
-        | Element e -> Element (f e)
-        | List l -> List (Infinite_list.map l ~f:(map ~f))
-
-      let rec lift ~f = function
-        | Element e -> List (Infinite_list.map (f e) ~f:(fun y -> Element y))
-        | List l -> List (Infinite_list.map l ~f:(lift ~f))
-    end
-
     type 'a t =
       { dim : int
       ; depth : int
@@ -369,12 +345,17 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
 
-    let to_unidims t =
+    let rec (to_unidims : Floatlike.t t -> Unidim.t list option) = fun t ->
       match depth t with
       | 0 -> Some (
           List.init (dim t) ~f:(fun i ->
             { Unidim.f = (fun ys -> Deep_list.element_exn (List.nth_exn (eval t ys) i))
-            ; f' = Lazy.from_fun (fun () -> List.nth_exn (jacobian t) i)
+            ; f' = Lazy.from_fun (fun () ->
+                  let a = jacobian t in
+                  let b = to_unidims a in
+                  let c = Option.value_exn b in
+                  let d = List.nth_exn c i in
+                  d)
             }))
       | _ -> None
 
