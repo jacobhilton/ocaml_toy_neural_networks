@@ -315,6 +315,73 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
     (* ( * ) and other common, map, map2, compose_univar and other compose *)
   end
 
+  module Mutidim2 = struct
+    type unidim = Unidim.t
+
+    module Deep_list = struct
+      type 'a t =
+        | Element of 'a
+        | List of 'a t Infinite_list.t
+
+      let return e = Element e
+
+      let rec collapse_exn t d =
+        let fail () = failwith "Deep_list.collapse_exn failed" in
+        if Int.(d < 0) then fail () else
+          match d, t with
+          | 0, Element e -> e
+          | 0, List _ | _, Element _ -> fail ()
+          | _, List l -> Infinite_list.map l ~f:(fun s -> collapse_exn s Int.(d - 1))
+
+      let rec map ~f = function
+        | Element e -> Element (f e)
+        | List l -> List (Infinite_list.map l ~f:(map ~f))
+
+      let rec lift ~f = function
+        | Element e -> List (Infinite_list.map (f e) ~f:(fun y -> Element y))
+        | List l -> List (Infinite_list.map l ~f:(lift ~f))
+    end
+
+    type 'a t =
+      { dim : int
+      ; depth : int
+      ; f : Floatlike.t Infinite_list.t -> 'a Deep_list.t list
+      ; f' : 'a t Lazy.t
+      }
+
+    let dim { dim; depth = _; f = _; f' = _ } = dim
+    
+    let depth { dim = _; depth; f = _; f' = _ } = depth
+
+    let eval { dim = _; depth = _;f; f' = _ } y = f y
+
+    let jacobian { dim = _; depth = _;f = _; f' } = Lazy.force f'
+
+    let of_unidims us =
+      let rec of_unidims' u's depth =
+        { dim = List.length us
+        ; depth
+        ; f = (fun ys -> List.map u's ~f:(Deep_list.map ~f:(fun u -> Unidim.eval u ys)))
+        ; f' = Lazy.from_fun (fun () -> of_unidims' (List.map u's ~f:(Deep_list.lift ~f:Unidim.grad)) Int.(depth + 1))
+        }
+      in
+      of_unidims' (List.map us ~f:Deep_list.return) 0
+
+    let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
+
+    let to_unidims t =
+      match depth t with
+      | 0 -> Some (
+          List.init (dim t) ~f:(fun i ->
+            { Unidim.f = (fun ys -> Deep_list.element_exn (List.nth_exn (eval t ys) i))
+            ; f' = Lazy.from_fun (fun () -> List.nth_exn (jacobian t) i)
+            }))
+      | _ -> None
+
+    let empty = of_unidims []
+
+  end
+
   include Unidim
 end
 
