@@ -318,11 +318,11 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
   module Mutidim2 = struct
     type unidim = Unidim.t
 
-    type 'a t =
+    type t =
       { dim : int
       ; depth : int
-      ; f : Floatlike.t Infinite_list.t -> 'a Deep_list.t list
-      ; f' : 'a t Lazy.t
+      ; f : Floatlike.t Infinite_list.t -> Floatlike.t Deep_list.t list
+      ; f' : t Lazy.t
       }
 
     let dim { dim; depth = _; f = _; f' = _ } = dim
@@ -345,7 +345,8 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
 
-    let rec (to_unidims : Floatlike.t t -> Unidim.t list option) = fun t ->
+    let rec (to_unidims : t -> Unidim.t list option) = fun t ->
+      (* of_undims' - a pair? *)
       match depth t with
       | 0 -> Some (
           List.init (dim t) ~f:(fun i ->
