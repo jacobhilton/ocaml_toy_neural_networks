@@ -219,7 +219,16 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
               Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
     }
 
+
   let compose' g hs = compose g (Infinite_list.of_list hs ~default:zero)
+
+  let compose_list ~mode _gss =
+    match mode with
+    | `Forward -> failwith "hi"
+    | `Reverse -> failwith "there"
+
+  let compose_list' ~mode gss =
+    compose_list ~mode (List.map gss ~f:(fun gs -> Infinite_list.of_list gs ~default:zero))
 
   let int_pow t n = compose_univar (Univar.Uncomposed.int_pow n) t
 
