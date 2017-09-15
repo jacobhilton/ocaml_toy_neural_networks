@@ -74,15 +74,21 @@ module type S = sig
 
     val dim : t -> int
 
-    val eval : t -> floatlike Infinite_list.t -> floatlike list
+    val eval : t -> floatlike Infinite_list.t -> floatlike Deep_list.t list
 
-    val jacobian : t -> unidim Infinite_list.t list
+    val eval' : t -> floatlike list -> floatlike Deep_list.t list
+
+    val eval0_exn' : t -> floatlike list -> floatlike list
+
+    val eval1_exn' : t -> floatlike list -> floatlike Infinite_list.t list
+
+    val eval2_exn' : t -> floatlike list -> floatlike Infinite_list.t Infinite_list.t list
+
+    val jacobian : t -> t
 
     val of_unidims : unidim list -> t
 
     val of_unidim : dim:int -> unidim -> t
-
-    val to_unidims : t -> unidim list
 
     val empty : t
 
@@ -92,9 +98,13 @@ module type S = sig
 
     val scale : t -> floatlike -> t
 
-    val ( + ) : t -> t -> t
+    val (+) : t -> t -> t
 
-    val ( - ) : t -> t -> t
+    val (-) : t -> t -> t
+
+    val ( * ) : t -> t -> t
+
+    val compose_univar : Univar.t -> t -> t
   end
 end
 

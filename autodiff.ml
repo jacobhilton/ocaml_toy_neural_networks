@@ -256,70 +256,6 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     type t =
       { dim : int
-      ; f : Floatlike.t Infinite_list.t -> Floatlike.t list
-      ; f' : Unidim.t Infinite_list.t list Lazy.t
-      }
-
-    let dim { dim; f = _; f' = _ } = dim
-    
-    let eval { dim = _; f; f' = _ } y = f y
-
-    let jacobian { dim = _; f = _; f' } = Lazy.force f'
-
-    let of_unidims us =
-      { dim = List.length us
-      ; f = (fun ys -> List.map us ~f:(fun u -> Unidim.eval u ys))
-      ; f' = Lazy.from_fun (fun () -> List.map us ~f:Unidim.grad)
-      }
-
-    let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
-
-    let to_unidims t =
-      List.init (dim t) ~f:(fun i ->
-        { Unidim.f = (fun ys -> List.nth_exn (eval t ys) i)
-        ; f' = Lazy.from_fun (fun () -> List.nth_exn (jacobian t) i)
-        })
-
-    let empty = of_unidims []
-
-    let c ~dim y = of_unidim ~dim (Unidim.c y)
-
-    let x ~dim = of_unidims (List.init dim ~f:(fun i -> Unidim.x_i i))
-
-    let scale t k =
-      { dim = dim t
-      ; f = (fun ys -> List.map (eval t ys) ~f:(fun z -> Floatlike.( * ) k z))
-      ; f' = Lazy.from_fun (fun () -> List.map (jacobian t) ~f:(Infinite_list.map ~f:(fun dt -> Unidim.scale dt k)))
-      }
-
-    let plus_or_minus floatlike unidim g h =
-      let dim = Int.max (dim g) (dim h) in
-      let map2 l1 l2 ~f ~default =
-        let l =
-          Infinite_list.map2 (Infinite_list.of_list l1 ~default)
-            (Infinite_list.of_list l2 ~default) ~f
-        in
-        Infinite_list.split_n l dim |> fst
-      in
-      { dim
-      ; f = (fun ys -> map2 (eval g ys) (eval h ys) ~f:floatlike ~default:Floatlike.zero)
-      ; f' = Lazy.from_fun (fun () ->
-            map2 (jacobian g) (jacobian h) ~f:(Infinite_list.map2 ~f:unidim)
-              ~default:(Infinite_list.constant ~default:Unidim.zero))
-      }
-
-    let (+) = plus_or_minus Floatlike.(+) Unidim.(+)
-
-    let (-) = plus_or_minus Floatlike.(-) Unidim.(-)
-
-    (* ( * ) and other common, map, map2, compose_univar and other compose *)
-  end
-
-  module Mutidim2 = struct
-    type unidim = Unidim.t
-
-    type t =
-      { dim : int
       ; depth : int
       ; f : Floatlike.t Infinite_list.t -> Floatlike.t Deep_list.t list
       ; f' : t Lazy.t
@@ -331,6 +267,18 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     let eval { dim = _; depth = _;f; f' = _ } y = f y
 
+    let eval' t y = eval t (Infinite_list.of_list y ~default:Floatlike.zero)
+
+    let eval0_exn' t y = List.map (eval' t y) ~f:Deep_list.element_exn
+
+    let eval1_exn' t y =
+      List.map (eval' t y) ~f:(fun l ->
+        Infinite_list.map (Deep_list.list_exn l) ~f:Deep_list.element_exn)
+
+    let eval2_exn' t y =
+      List.map (eval' t y) ~f:(fun l ->
+        Infinite_list.map (Deep_list.list2_exn l) ~f:(Infinite_list.map ~f:Deep_list.element_exn))
+
     let jacobian { dim = _; depth = _;f = _; f' } = Lazy.force f'
 
     let of_unidims us =
@@ -341,45 +289,54 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
         ; f' = Lazy.from_fun (fun () -> of_unidims' (List.map u's ~f:(Deep_list.lift ~f:Unidim.grad)) Int.(depth + 1))
         }
       in
-      of_unidims' (List.map us ~f:Deep_list.return) 0
+      of_unidims' (List.map us ~f:(Deep_list.return ~depth:0)) 0
 
     let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
 
-
-    module Aux = struct
-      type t =
-        { f : Floatlike.t Infinite_list.t -> Floatlike.t Deep_list.t
-        ; f' : t Infinite_list.t Lazy.t
-        }
-
-      let list_exn { f; f' } inf_dim = ...
-    end
-
-
-    let rec (to_unidims : t -> Unidim.t list option) = fun t ->
-      let rec (to_unidims' : t -> Aux.t list) = fun t ->
-        List.init (dim t) ~f:(fun i ->
-          { Aux.f = (fun ys -> List.nth_exn (eval t ys) i)
-          ; f'= Lazy.from_fun (fun () ->
-                let a = List.nth_exn (to_unidims' (jacobian t)) i in
-                a
-              )
-          })
-      in
-      match depth t with
-      | 0 ->
-        let u's = to_unidims' t in
-        Some (
-          List.init (dim t) ~f:(fun i ->
-            let { Unidim_aux.f; f' } = List.nth_exn u's i in
-            { Unidim.f = (fun ys -> Deep_list.element_exn (f ys))
-            ; f' = Lazy.from_fun (fun () ->
-                  let 
-            }))
-      | _ -> None
-
     let empty = of_unidims []
 
+    let c ~dim y = of_unidim ~dim (Unidim.c y)
+
+    let x ~dim = of_unidims (List.init dim ~f:(fun i -> Unidim.x_i i))
+
+    let rec scale t k =
+      { dim = dim t
+      ; depth = depth t
+      ; f = (fun ys -> List.map (eval t ys) ~f:(Deep_list.map ~f:(fun z -> Floatlike.( * ) k z)))
+      ; f' = Lazy.from_fun (fun () -> scale (jacobian t) k)
+      }
+
+    let map2_exn ~f ~default ~f_jacobian g h =
+      let dim = Int.max (dim g) (dim h) in
+      let list_map2 l1 l2 ~f ~default =
+        let l =
+          Infinite_list.map2 (Infinite_list.of_list l1 ~default)
+            (Infinite_list.of_list l2 ~default) ~f
+        in
+        Infinite_list.split_n l dim |> fst
+      in
+      if Int.equal (depth g) (depth h) then
+        let depth = depth g in
+        { dim
+        ; depth
+        ; f = (fun ys -> list_map2 (eval g ys) (eval h ys) ~f:(Deep_list.map2_exn ~f) ~default:(Deep_list.return ~depth default))
+        ; f' = Lazy.from_fun (fun () -> f_jacobian g h)
+        }
+      else
+        failwith "Multidim binary operation called with arguments of different depth"
+
+    let rec (+) g h = map2_exn ~f:Floatlike.(+) ~default:Floatlike.zero
+        ~f_jacobian:(fun g h -> (+) (jacobian g) (jacobian h)) g h
+
+    let rec (-) g h = map2_exn ~f:Floatlike.(-) ~default:Floatlike.zero
+        ~f_jacobian:(fun g h -> (-) (jacobian g) (jacobian h)) g h
+
+    let rec ( * ) g h =
+      map2_exn ~f:Floatlike.( * ) ~default:Floatlike.one
+        ~f_jacobian:(fun g h ->
+            g * (jacobian h) + (jacobian g) * h) g h (* wrong!!! need a list_exn function *)
+    
+    let compose_univar = failwith "unimplemented"
   end
 
   include Unidim
