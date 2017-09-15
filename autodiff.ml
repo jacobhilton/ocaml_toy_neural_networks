@@ -345,18 +345,36 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
     let of_unidim ~dim u = of_unidims (List.init dim ~f:(Fn.const u))
 
+
+    module Aux = struct
+      type t =
+        { f : Floatlike.t Infinite_list.t -> Floatlike.t Deep_list.t
+        ; f' : t Infinite_list.t Lazy.t
+        }
+
+      let list_exn { f; f' } inf_dim = ...
+    end
+
+
     let rec (to_unidims : t -> Unidim.t list option) = fun t ->
-      (* of_undims' - a pair? *)
+      let rec (to_unidims' : t -> Aux.t list) = fun t ->
+        List.init (dim t) ~f:(fun i ->
+          { Aux.f = (fun ys -> List.nth_exn (eval t ys) i)
+          ; f'= Lazy.from_fun (fun () ->
+                let a = List.nth_exn (to_unidims' (jacobian t)) i in
+                a
+              )
+          })
+      in
       match depth t with
-      | 0 -> Some (
+      | 0 ->
+        let u's = to_unidims' t in
+        Some (
           List.init (dim t) ~f:(fun i ->
-            { Unidim.f = (fun ys -> Deep_list.element_exn (List.nth_exn (eval t ys) i))
+            let { Unidim_aux.f; f' } = List.nth_exn u's i in
+            { Unidim.f = (fun ys -> Deep_list.element_exn (f ys))
             ; f' = Lazy.from_fun (fun () ->
-                  let a = jacobian t in
-                  let b = to_unidims a in
-                  let c = Option.value_exn b in
-                  let d = List.nth_exn c i in
-                  d)
+                  let 
             }))
       | _ -> None
 
