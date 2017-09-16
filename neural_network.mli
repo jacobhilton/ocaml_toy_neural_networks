@@ -32,7 +32,7 @@ type t =
   { layers : Layer.t list
   ; parameters : Parameter.t list
   ; index_of_parameter : Parameter.t -> int option
-  ; output : Autodiff.Float.t list -> Autodiff.Float.t list
+  ; parameterized_output : float list -> Autodiff.Float.t list
   }
 
 val create_exn
@@ -44,3 +44,18 @@ val create_full_exn
   :  ?activation:Autodiff.Float.Univar.t
   -> int list
   -> t
+
+val train_parameters
+  :  ?cost_of_output_and_answer:Autodiff.Float.t
+  -> ?regularization:float
+  -> ?robust:bool
+  -> ?step_size:float
+  -> ?iterations:int
+  -> t
+  -> inputs_and_answers:(float list * float list) list
+  -> float list * Newton.Status.t
+
+val output
+  :  t
+  -> trained_parameters:float list
+  -> (float list -> float list) Core.Staged.t

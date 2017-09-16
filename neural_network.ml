@@ -42,7 +42,7 @@ type t =
   { layers : Layer.t list
   ; parameters : Parameter.t list
   ; index_of_parameter : Parameter.t -> int option
-  ; output : Autodiff.Float.t list -> Autodiff.Float.t list
+  ; parameterized_output : float list -> Autodiff.Float.t list
   }
 
 let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) connections =
@@ -125,12 +125,13 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) connections =
       in
       parameter_autodiffs @ layer_autodiffs_without_parameters)
   in
-  let output input =
+  let parameterized_output input =
     let input_layer_size = Layer.to_size (List.hd_exn layers) in
     if Int.equal (List.length input) input_layer_size then
+      let input_autodiffs = List.map input ~f:Autodiff.Float.c in
       let output_autodiffs =
         Autodiff.Float.compose_list''
-          (List.rev ((parameter_autodiffs @ input) :: layers_autodiffs))
+          (List.rev ((parameter_autodiffs @ input_autodiffs) :: layers_autodiffs))
       in
       List.split_n output_autodiffs autodiff_offset |> snd
     else
@@ -140,7 +141,7 @@ let create_exn ?(activation=Autodiff.Float.Univar.(sigmoid x)) connections =
   { layers
   ; parameters = flattened_parameters
   ; index_of_parameter
-  ; output
+  ; parameterized_output
   }
 
 let create_full_exn ?activation = function
@@ -162,3 +163,34 @@ let create_full_exn ?activation = function
         |> List.concat)
     in
     create_exn ?activation connections
+
+let train_parameters
+    ?(cost_of_output_and_answer =
+      Autodiff.Float.(zero - x_1 * log x_0 - (one - x_1) * log (one - x_0)))
+    ?(regularization=1.) ?robust ?step_size ?iterations t ~inputs_and_answers =
+  let cost_of_errors =
+    List.map inputs_and_answers ~f:(fun (input, answer) ->
+      List.map2_exn (t.parameterized_output input) answer ~f:(fun output_i answer_i ->
+        Autodiff.Float.compose' cost_of_output_and_answer
+          [output_i; Autodiff.Float.c answer_i]))
+    |> List.concat
+    |> List.fold ~init:Autodiff.Float.zero ~f:Autodiff.Float.(+)
+  in
+  let cost_of_parameters =
+    List.init (List.length t.parameters) ~f:(fun i ->
+      Autodiff.Float.(int_pow (x_i i) 2))
+    |> List.fold ~init:Autodiff.Float.zero ~f:Autodiff.Float.(+)
+  in
+  let dim = List.length inputs_and_answers in
+  let cost =
+    Autodiff.Float.(
+      scale
+        (cost_of_errors + (scale cost_of_parameters (regularization /. 2.)))
+        (1. /. (Float.of_int dim)))
+  in
+  Newton.find_stationary ?robust ?step_size ?iterations ~dim cost
+
+let output t ~trained_parameters =
+  Staged.stage (fun input ->
+    t.parameterized_output input
+    |> List.map ~f:(fun output -> Autodiff.Float.eval' output trained_parameters))

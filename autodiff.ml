@@ -243,7 +243,8 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
                 Infinite_list.map grad_hs_of_acc ~f:(fun grad_h_of_acc ->
                   Infinite_list.map grad_acc_transposed ~f:(fun dacc ->
                     let terms = Infinite_list.map2 grad_h_of_acc dacc ~f:( * ) in
-                    Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
+                    Infinite_list.fold terms ~init:zero ~f:(+)
+                      ~f_default:(fun acc _ -> acc)))
               in
               (Some grad_acc_new, hs :: acc))
         with
