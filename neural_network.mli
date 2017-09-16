@@ -1,8 +1,8 @@
 module Layer : sig
   type t
 
-  val of_int : int -> t
-  val to_int : t -> int
+  val of_size : int -> t
+  val to_size : t -> int
 end
 
 module Parameter : sig
@@ -32,10 +32,15 @@ type t =
   { layers : Layer.t list
   ; parameters : Parameter.t list
   ; index_of_parameter : Parameter.t -> int option
-  ; output : float list -> Autodiff.Float.t list
+  ; output : Autodiff.Float.t list -> Autodiff.Float.t list
   }
 
 val create_exn
+  :  ?activation:Autodiff.Float.Univar.t
+  -> (int * int) list list
+  -> t
+
+val create_full_exn
   :  ?activation:Autodiff.Float.Univar.t
   -> int list
   -> t

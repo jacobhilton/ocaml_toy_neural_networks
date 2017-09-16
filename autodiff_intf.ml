@@ -69,6 +69,7 @@ module type S = sig
 
   val compose_list' : t -> t list list -> t
 
+  val compose_list'' : t list list -> t list
+
   include Common with type t := t and type floatlike := floatlike
 end
-

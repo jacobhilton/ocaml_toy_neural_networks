@@ -210,7 +210,7 @@ module Numeric(Floatlike : Floatlike.For_matrix) = struct
                   (i, x)
                 else
                   (index, max_abs)
-                )
+              )
               |> fst
             in
             swap_rows t' k index_of_max_abs;

@@ -2,9 +2,9 @@ open Core
 
 module Status = struct
   type t =
-     | Converged
-     | Failed
-     | Iterating
+    | Converged
+    | Failed
+    | Iterating
   [@@deriving sexp]
 
   let to_string t = Sexp.to_string (sexp_of_t t)

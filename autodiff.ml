@@ -202,21 +202,21 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
   let rec compose_univar g h =
     { f = (fun ys -> (Univar.eval g (eval h ys)))
     ; f' = Lazy.from_fun (fun () ->
-          let dg_of_h = compose_univar (Univar.d g) h in
-          Infinite_list.map (grad h) ~f:(fun dh -> dg_of_h * dh))
+        let dg_of_h = compose_univar (Univar.d g) h in
+        Infinite_list.map (grad h) ~f:(fun dh -> dg_of_h * dh))
     }
 
   let rec compose g hs =
     { f = (fun ys -> eval g (Infinite_list.map hs ~f:(fun h -> eval h ys)))
     ; f' = Lazy.from_fun (fun () ->
-          let grad_g_of_hs =
-            Infinite_list.map (grad g) ~f:(fun dg -> compose dg hs)
-          in
-          let grad_hs = Infinite_list.map hs ~f:grad in
-          let grad_hs_transposed = Infinite_list.transpose grad_hs in
-          Infinite_list.map grad_hs_transposed ~f:(fun dh ->
-            let terms = Infinite_list.map2 grad_g_of_hs dh ~f:( * ) in
-            Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
+        let grad_g_of_hs =
+          Infinite_list.map (grad g) ~f:(fun dg -> compose dg hs)
+        in
+        let grad_hs = Infinite_list.map hs ~f:grad in
+        let grad_hs_transposed = Infinite_list.transpose grad_hs in
+        Infinite_list.map grad_hs_transposed ~f:(fun dh ->
+          let terms = Infinite_list.map2 grad_g_of_hs dh ~f:( * ) in
+          Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
     }
 
 
@@ -224,42 +224,46 @@ module Make (Floatlike : Floatlike.For_autodiff) = struct
 
   let rec compose_list g hss =
     { f = (fun ys ->
-          List.fold (List.rev hss) ~init:ys
-            ~f:(fun inputs hs -> Infinite_list.map hs ~f:(fun h -> eval h inputs))
-          |> eval g)
+        List.fold (List.rev hss) ~init:ys
+          ~f:(fun inputs hs -> Infinite_list.map hs ~f:(fun h -> eval h inputs))
+        |> eval g)
     ; f' = Lazy.from_fun (fun () ->
-          match
-            List.fold (List.rev hss) ~init:(None, []) ~f:(fun (grad_acc_option, acc) hs ->
-                let grad_hs = Infinite_list.map hs ~f:grad in
-                match grad_acc_option with
-                | None -> (Some grad_hs, hs :: acc)
-                | Some grad_acc ->
-                  let grad_hs_of_acc =
-                    Infinite_list.map grad_hs
-                      ~f:(Infinite_list.map ~f:(fun dh -> compose_list dh acc))
-                  in
-                  let grad_acc_transposed = Infinite_list.transpose grad_acc in
-                  let grad_acc_new =
-                    Infinite_list.map grad_hs_of_acc ~f:(fun grad_h_of_acc ->
-                        Infinite_list.map grad_acc_transposed ~f:(fun dacc ->
-                            let terms = Infinite_list.map2 grad_h_of_acc dacc ~f:( * ) in
-                            Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
-                  in
-                  (Some grad_acc_new, hs :: acc))
-          with
-          | None, _ -> grad g
-          | Some grad_hss, _ ->
-            let grad_g_of_hss =
-              Infinite_list.map (grad g) ~f:(fun dg -> compose_list dg hss)
-            in
-            let grad_hss_transposed = Infinite_list.transpose grad_hss in
-            Infinite_list.map grad_hss_transposed ~f:(fun dh ->
-                let terms = Infinite_list.map2 grad_g_of_hss dh ~f:( * ) in
-                Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
+        match
+          List.fold (List.rev hss) ~init:(None, []) ~f:(fun (grad_acc_option, acc) hs ->
+            let grad_hs = Infinite_list.map hs ~f:grad in
+            match grad_acc_option with
+            | None -> (Some grad_hs, hs :: acc)
+            | Some grad_acc ->
+              let grad_hs_of_acc =
+                Infinite_list.map grad_hs
+                  ~f:(Infinite_list.map ~f:(fun dh -> compose_list dh acc))
+              in
+              let grad_acc_transposed = Infinite_list.transpose grad_acc in
+              let grad_acc_new =
+                Infinite_list.map grad_hs_of_acc ~f:(fun grad_h_of_acc ->
+                  Infinite_list.map grad_acc_transposed ~f:(fun dacc ->
+                    let terms = Infinite_list.map2 grad_h_of_acc dacc ~f:( * ) in
+                    Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
+              in
+              (Some grad_acc_new, hs :: acc))
+        with
+        | None, _ -> grad g
+        | Some grad_hss, _ ->
+          let grad_g_of_hss =
+            Infinite_list.map (grad g) ~f:(fun dg -> compose_list dg hss)
+          in
+          let grad_hss_transposed = Infinite_list.transpose grad_hss in
+          Infinite_list.map grad_hss_transposed ~f:(fun dh ->
+            let terms = Infinite_list.map2 grad_g_of_hss dh ~f:( * ) in
+            Infinite_list.fold terms ~init:zero ~f:(+) ~f_default:(fun acc _ -> acc)))
     }
 
   let compose_list' g hss =
     compose_list g (List.map hss ~f:(fun hs -> Infinite_list.of_list hs ~default:zero))
+
+  let compose_list'' = function
+    | [] -> []
+    | gs :: hss -> List.map gs ~f:(fun g -> compose_list' g hss)
 
   let int_pow t n = compose_univar (Univar.Uncomposed.int_pow n) t
 
