@@ -65,9 +65,9 @@ module type S = sig
 
   val compose' : t -> t list -> t
 
-  val compose_list : mode:[ `Forward | `Reverse ] -> t Infinite_list.t list -> t Infinite_list.t
+  val compose_list : t -> t Infinite_list.t list -> t
 
-  val compose_list' : mode:[ `Forward | `Reverse ] -> t list list -> t list
+  val compose_list' : t -> t list list -> t
 
   include Common with type t := t and type floatlike := floatlike
 end
