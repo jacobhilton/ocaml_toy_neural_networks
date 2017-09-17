@@ -91,3 +91,41 @@ let find_stationary ?(robust=false) ?(step_size=1.) ?iterations
         end
   done;
   !x, !status
+
+let find_minimum ?(robust=false) ~step_size ?iterations
+    ?(init=(Infinite_list.constant ~default:0.)) ~dim f =
+  let grad_f_inf = Autodiff.Float.grad f in
+  let grad_f =
+    Infinite_list.split_n grad_f_inf dim |> fst
+  in
+  let x = ref (Infinite_list.split_n init dim |> fst) in
+  let f_of_x = ref (Autodiff.Float.eval' f !x) in
+  let k = ref 0 in
+  let status = ref Status.Iterating in
+  while
+    match !status with
+    | Converged | Failed -> false
+    | Iterating ->
+      match iterations with
+      | Some n -> Int.(!k < n)
+      | None -> true
+  do
+    let eval_at_x g = Autodiff.Float.eval' g !x in
+    let grad_f_of_x = List.map grad_f ~f:eval_at_x in
+    let new_x =
+      List.map2_exn !x grad_f_of_x ~f:(fun x_i grad_f_of_x_i ->
+        x_i -. step_size *. grad_f_of_x_i
+      )
+    in
+    let new_f_of_x = Autodiff.Float.eval' f new_x in
+    if Float.is_nan new_f_of_x || Float.is_inf new_f_of_x then
+      status := Failed
+    else
+      begin
+        if equal ~robust !f_of_x new_f_of_x then status := Converged;
+        x := new_x;
+        f_of_x := new_f_of_x;
+        k := Int.(!k + 1)
+      end
+  done;
+  !x, !status

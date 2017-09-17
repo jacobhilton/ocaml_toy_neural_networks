@@ -45,12 +45,21 @@ val create_full_exn
   -> int list
   -> t
 
+module Method : sig
+  type t =
+    | Newton
+    | Gradient_descent_with_step_size of float
+  [@@ deriving sexp]
+
+  val arg : t Core.Command.Arg_type.t
+end
+
 val train_parameters
   :  ?cost_of_output_and_answer:Autodiff.Float.t
   -> ?regularization:float
   -> ?init_epsilon:float
   -> ?robust:bool
-  -> ?step_size:float
+  -> ?method_:Method.t
   -> ?iterations:int
   -> t
   -> inputs_and_answers:(float list * float list) list

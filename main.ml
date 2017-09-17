@@ -36,7 +36,7 @@ module Boolean_function = struct
     | Or (s1, s2) -> (eval s1 l) || (eval s2 l)
 end
 
-let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~iterations =
+let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_ ~iterations =
   let boolean_function_arity = Int.(Boolean_function.max_index boolean_function + 1) in
   let inputs =
     List.init (Int.pow 2 boolean_function_arity) ~f:(fun input_number ->
@@ -65,10 +65,10 @@ let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~iterati
   printf "Training neural network on the dataset...\n";
   Random.self_init ();
   match
-    Neural_network.train_parameters ~regularization ~init_epsilon ~iterations network
-      ~inputs_and_answers
+    Neural_network.train_parameters ~regularization ~init_epsilon ?method_ ~iterations
+      network ~inputs_and_answers
   with
-  | _, Newton.Status.Failed -> failwith "Newton's method failed to converge"
+  | _, Newton.Status.Failed -> failwith "Minimization method failed to converge"
   | trained_parameters, _ ->
     printf "Trained parameter values:\n";
     List.iter (List.zip_exn network.Neural_network.parameters trained_parameters)
@@ -106,18 +106,26 @@ let () =
         anon ("boolean_function" %: Boolean_function.arg)
       and hidden_layers =
         flag "hidden-layers" (optional_with_default 0 int)
-          ~doc:"N number of hidden layers in the neural network"
+          ~doc:"N number of hidden layers in the neural network\n\
+               default: 0"
       and regularization =
         flag "regularization" (optional_with_default 0.01 float)
-          ~doc:"l regularization paramter"
+          ~doc:"f regularization parameter\n\
+               default: 0.01"
       and init_epsilon =
-        flag "init-epsilon" (optional_with_default 0.0001 float)
-          ~doc:"e initialize parameters randomly in the range (-e, e) for Newton's method"
+        flag "init-epsilon" (optional_with_default 1. float)
+          ~doc:"f initialize parameters uniformly at random in the range [-f, f)\n\
+                default: 1"
+      and method_ =
+        flag "method" (optional Neural_network.Method.arg)
+          ~doc:"SEXP minimization method, either 'Newton' or 'Gradient_descent_with_step_size f'\n\
+                default: Newton for networks with no hidden layers, Gradent_descent_with_step_size 0.5 for networks with at least one hidden layer"
       and iterations =
         flag "iterations" (optional_with_default 100 int)
-          ~doc:"N number of iterations for Newton's method"
+          ~doc:"N maximum number of iterations for the minimization method\n\
+               default: 100"
       in
       fun () ->
-        main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~iterations
+        main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_ ~iterations
     ]
   |> Command.run

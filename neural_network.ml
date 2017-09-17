@@ -164,10 +164,19 @@ let create_full_exn ?activation = function
     in
     create_exn ?activation connections
 
+module Method = struct
+  type t =
+    | Newton
+    | Gradient_descent_with_step_size of float
+  [@@ deriving sexp]
+
+  let arg = Command.Arg_type.create (fun s -> t_of_sexp (Sexp.of_string s))
+end
+
 let train_parameters
     ?(cost_of_output_and_answer =
       Autodiff.Float.(zero - x_1 * log x_0 - (one - x_1) * log (one - x_0)))
-    ?(regularization=1.) ?init_epsilon ?robust ?step_size ?iterations t ~inputs_and_answers =
+    ?(regularization=1.) ?init_epsilon ?robust ?method_ ?iterations t ~inputs_and_answers =
   let cost_of_errors =
     List.map inputs_and_answers ~f:(fun (input, answer) ->
       List.map2_exn (t.parameterized_output input) answer ~f:(fun output_i answer_i ->
@@ -195,7 +204,13 @@ let train_parameters
       List.init dim ~f:(fun _ -> Random.float (2. *. epsilon) -. epsilon)
       |> Infinite_list.of_list ~default:0.)
   in
-  Newton.find_stationary ?robust ?step_size ?iterations ?init ~dim cost
+  let default_method =
+    if Int.(List.length t.layers <= 2) then Method.Newton else Gradient_descent_with_step_size 0.5
+  in
+  match Option.value method_ ~default:default_method with
+  | Method.Newton -> Newton.find_stationary ?robust ?iterations ?init ~dim cost
+  | Gradient_descent_with_step_size step_size ->
+    Newton.find_minimum ?robust ~step_size ?iterations ?init ~dim cost
 
 let output t ~trained_parameters =
   Staged.stage (fun input ->

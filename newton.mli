@@ -8,6 +8,7 @@ module Status : sig
   val to_string : t -> string
 end
 
+(* Newton-Raphson *)
 val find_root
   :  ?robust:bool
   -> ?step_size:float
@@ -16,9 +17,20 @@ val find_root
   -> Autodiff.Float.Univar.t
   -> float * Status.t
 
+(* Newton's method *)
 val find_stationary
   :  ?robust:bool
   -> ?step_size:float
+  -> ?iterations:int
+  -> ?init:float Infinite_list.t
+  -> dim:int
+  -> Autodiff.Float.t
+  -> float list * Status.t
+
+(* Gradient descent *)
+val find_minimum
+  :  ?robust:bool
+  -> step_size:float
   -> ?iterations:int
   -> ?init:float Infinite_list.t
   -> dim:int
