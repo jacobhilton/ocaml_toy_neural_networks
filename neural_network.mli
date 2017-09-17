@@ -57,7 +57,7 @@ end
 val train_parameters
   :  ?cost_of_output_and_answer:Autodiff.Float.t
   -> ?regularization:float
-  -> ?init_epsilon:float
+  -> ?epsilon_init:float
   -> ?robust:bool
   -> ?method_:Method.t
   -> ?iterations:int

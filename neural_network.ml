@@ -176,7 +176,7 @@ end
 let train_parameters
     ?(cost_of_output_and_answer =
       Autodiff.Float.(zero - x_1 * log x_0 - (one - x_1) * log (one - x_0)))
-    ?(regularization=1.) ?init_epsilon ?robust ?method_ ?iterations t ~inputs_and_answers =
+    ?(regularization=1.) ?epsilon_init ?robust ?method_ ?iterations t ~inputs_and_answers =
   let cost_of_errors =
     List.map inputs_and_answers ~f:(fun (input, answer) ->
       List.map2_exn (t.parameterized_output input) answer ~f:(fun output_i answer_i ->
@@ -200,7 +200,7 @@ let train_parameters
   in
   let dim = List.length t.parameters in
   let init =
-    Option.map init_epsilon ~f:(fun epsilon ->
+    Option.map epsilon_init ~f:(fun epsilon ->
       List.init dim ~f:(fun _ -> Random.float (2. *. epsilon) -. epsilon)
       |> Infinite_list.of_list ~default:0.)
   in

@@ -36,7 +36,7 @@ module Boolean_function = struct
     | Or (s1, s2) -> (eval s1 l) || (eval s2 l)
 end
 
-let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_ ~iterations =
+let main ~boolean_function ~hidden_layers ~regularization ~epsilon_init ~method_ ~iterations =
   let boolean_function_arity = Int.(Boolean_function.max_index boolean_function + 1) in
   let inputs =
     List.init (Int.pow 2 boolean_function_arity) ~f:(fun input_number ->
@@ -65,7 +65,7 @@ let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_
   printf "Training neural network on the dataset...\n";
   Random.self_init ();
   match
-    Neural_network.train_parameters ~regularization ~init_epsilon ?method_ ~iterations
+    Neural_network.train_parameters ~regularization ~epsilon_init ?method_ ~iterations
       network ~inputs_and_answers
   with
   | _, Newton.Status.Failed -> failwith "Minimization method failed to converge"
@@ -112,8 +112,8 @@ let () =
         flag "regularization" (optional_with_default 0.001 float)
           ~doc:"f regularization parameter\n\
                default: 0.001"
-      and init_epsilon =
-        flag "init-epsilon" (optional_with_default 1. float)
+      and epsilon_init =
+        flag "epsilon-init" (optional_with_default 1. float)
           ~doc:"f initialize parameters uniformly at random in the range [-f, f)\n\
                 default: 1"
       and method_ =
@@ -126,6 +126,6 @@ let () =
                default: 1000"
       in
       fun () ->
-        main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_ ~iterations
+        main ~boolean_function ~hidden_layers ~regularization ~epsilon_init ~method_ ~iterations
     ]
   |> Command.run
