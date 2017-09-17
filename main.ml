@@ -36,7 +36,7 @@ module Boolean_function = struct
     | Or (s1, s2) -> (eval s1 l) || (eval s2 l)
 end
 
-let main ~boolean_function ~hidden_layers ~regularization ~iterations =
+let main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~iterations =
   let boolean_function_arity = Int.(Boolean_function.max_index boolean_function + 1) in
   let inputs =
     List.init (Int.pow 2 boolean_function_arity) ~f:(fun input_number ->
@@ -63,8 +63,10 @@ let main ~boolean_function ~hidden_layers ~regularization ~iterations =
     ([%sexp_of:int list] layer_sizes |> Sexp.to_string);
   let network = Neural_network.create_full_exn layer_sizes in
   printf "Training neural network on the dataset...\n";
+  Random.self_init ();
   match
-    Neural_network.train_parameters ~regularization ~iterations network ~inputs_and_answers
+    Neural_network.train_parameters ~regularization ~init_epsilon ~iterations network
+      ~inputs_and_answers
   with
   | _, Newton.Status.Failed -> failwith "Newton's method failed to converge"
   | trained_parameters, _ ->
@@ -107,12 +109,15 @@ let () =
           ~doc:"N number of hidden layers in the neural network"
       and regularization =
         flag "regularization" (optional_with_default 0.01 float)
-          ~doc:"LAMBDA regularization paramter"
+          ~doc:"l regularization paramter"
+      and init_epsilon =
+        flag "init-epsilon" (optional_with_default 0.0001 float)
+          ~doc:"e initialize parameters randomly in the range (-e, e) for Newton's method"
       and iterations =
         flag "iterations" (optional_with_default 100 int)
           ~doc:"N number of iterations for Newton's method"
       in
       fun () ->
-        main ~boolean_function ~hidden_layers ~regularization ~iterations
+        main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~iterations
     ]
   |> Command.run

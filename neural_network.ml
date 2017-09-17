@@ -167,7 +167,7 @@ let create_full_exn ?activation = function
 let train_parameters
     ?(cost_of_output_and_answer =
       Autodiff.Float.(zero - x_1 * log x_0 - (one - x_1) * log (one - x_0)))
-    ?(regularization=1.) ?robust ?step_size ?iterations t ~inputs_and_answers =
+    ?(regularization=1.) ?init_epsilon ?robust ?step_size ?iterations t ~inputs_and_answers =
   let cost_of_errors =
     List.map inputs_and_answers ~f:(fun (input, answer) ->
       List.map2_exn (t.parameterized_output input) answer ~f:(fun output_i answer_i ->
@@ -189,7 +189,13 @@ let train_parameters
         (cost_of_errors + (scale cost_of_parameters (regularization /. 2.)))
         (1. /. (Float.of_int (List.length inputs_and_answers))))
   in
-  Newton.find_stationary ?robust ?step_size ?iterations ~dim:(List.length t.parameters) cost
+  let dim = List.length t.parameters in
+  let init =
+    Option.map init_epsilon ~f:(fun epsilon ->
+      List.init dim ~f:(fun _ -> Random.float (2. *. epsilon) -. epsilon)
+      |> Infinite_list.of_list ~default:0.)
+  in
+  Newton.find_stationary ?robust ?step_size ?iterations ?init ~dim cost
 
 let output t ~trained_parameters =
   Staged.stage (fun input ->

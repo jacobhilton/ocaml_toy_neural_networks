@@ -48,6 +48,7 @@ val create_full_exn
 val train_parameters
   :  ?cost_of_output_and_answer:Autodiff.Float.t
   -> ?regularization:float
+  -> ?init_epsilon:float
   -> ?robust:bool
   -> ?step_size:float
   -> ?iterations:int
