@@ -205,7 +205,7 @@ let train_parameters
       |> Infinite_list.of_list ~default:0.)
   in
   let default_method =
-    if Int.(List.length t.layers <= 2) then Method.Newton else Gradient_descent_with_step_size 0.5
+    if Int.(List.length t.layers <= 2) then Method.Newton else Gradient_descent_with_step_size 1.
   in
   match Option.value method_ ~default:default_method with
   | Method.Newton -> Newton.find_stationary ?robust ?iterations ?init ~dim cost

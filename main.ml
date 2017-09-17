@@ -109,21 +109,21 @@ let () =
           ~doc:"N number of hidden layers in the neural network\n\
                default: 0"
       and regularization =
-        flag "regularization" (optional_with_default 0.01 float)
+        flag "regularization" (optional_with_default 0.001 float)
           ~doc:"f regularization parameter\n\
-               default: 0.01"
+               default: 0.001"
       and init_epsilon =
         flag "init-epsilon" (optional_with_default 1. float)
           ~doc:"f initialize parameters uniformly at random in the range [-f, f)\n\
                 default: 1"
       and method_ =
         flag "method" (optional Neural_network.Method.arg)
-          ~doc:"SEXP minimization method, either 'Newton' or 'Gradient_descent_with_step_size f'\n\
-                default: Newton for networks with no hidden layers, Gradent_descent_with_step_size 0.5 for networks with at least one hidden layer"
+          ~doc:"SEXP minimization method, either 'Newton' or '(Gradient_descent_with_step_size f)'\n\
+                default: Newton for networks with no hidden layers, (Gradent_descent_with_step_size 1) for networks with at least one hidden layer"
       and iterations =
-        flag "iterations" (optional_with_default 100 int)
+        flag "iterations" (optional_with_default 1000 int)
           ~doc:"N maximum number of iterations for the minimization method\n\
-               default: 100"
+               default: 1000"
       in
       fun () ->
         main ~boolean_function ~hidden_layers ~regularization ~init_epsilon ~method_ ~iterations
