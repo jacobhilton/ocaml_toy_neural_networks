@@ -177,18 +177,19 @@ let train_parameters
     |> List.fold ~init:Autodiff.Float.zero ~f:Autodiff.Float.(+)
   in
   let cost_of_parameters =
-    List.init (List.length t.parameters) ~f:(fun i ->
-      Autodiff.Float.(int_pow (x_i i) 2))
+    List.mapi t.parameters ~f:(fun i parameter ->
+      match parameter.Parameter.node_from with
+      | Bias -> Autodiff.Float.zero
+      | Index _ -> Autodiff.Float.(int_pow (x_i i) 2))
     |> List.fold ~init:Autodiff.Float.zero ~f:Autodiff.Float.(+)
   in
-  let dim = List.length inputs_and_answers in
   let cost =
     Autodiff.Float.(
       scale
         (cost_of_errors + (scale cost_of_parameters (regularization /. 2.)))
-        (1. /. (Float.of_int dim)))
+        (1. /. (Float.of_int (List.length inputs_and_answers))))
   in
-  Newton.find_stationary ?robust ?step_size ?iterations ~dim cost
+  Newton.find_stationary ?robust ?step_size ?iterations ~dim:(List.length t.parameters) cost
 
 let output t ~trained_parameters =
   Staged.stage (fun input ->
