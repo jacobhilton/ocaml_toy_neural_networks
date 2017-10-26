@@ -8,8 +8,6 @@ val e_i : int -> zero:'a -> one:'a -> 'a t
 
 val nth_exn : 'a t -> int -> 'a
 
-val default : 'a t -> 'a
-
 val split_n : 'a t -> int -> 'a list * 'a t
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
