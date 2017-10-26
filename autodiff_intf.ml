@@ -72,4 +72,48 @@ module type S = sig
   val compose_list'' : t list list -> t list
 
   include Common with type t := t and type floatlike := floatlike
+
+  module Multidim : sig
+    open Deep_list.Constructors
+
+    type unidim = t
+
+    type 'n t
+
+    val dim : _ t -> int
+
+    val depth : 'n t -> 'n nat
+
+    val eval : 'n t -> floatlike Infinite_list.t -> (floatlike, 'n) Deep_list.t list
+
+    val eval' : 'n t -> floatlike list -> (floatlike, 'n) Deep_list.t list
+ 
+    val eval0' : z t -> floatlike list -> floatlike list
+
+    val eval1' : z s t -> floatlike list -> floatlike Infinite_list.t list
+
+    val eval2' : z s s t -> floatlike list -> floatlike Infinite_list.t Infinite_list.t list
+
+    val jacobian : 'n t -> 'n s t
+
+    val of_unidims : unidim list -> z t
+
+    val of_unidim : dim:int -> unidim -> z t
+
+    val empty : z t
+
+    val c : dim:int -> floatlike -> z t
+
+    val x : dim:int -> z t
+
+    val scale : 'n t -> floatlike -> 'n t
+
+    val (+) : 'n t -> 'n t -> 'n t
+
+    val (-) : 'n t -> 'n t -> 'n t
+
+    val ( * ) : 'n t -> 'n t -> 'n t
+
+    val compose_univar : Univar.t -> 'n t -> 'n t
+  end
 end
