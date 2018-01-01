@@ -1,11 +1,20 @@
 # ocaml_toy_neural_networks
 
-An OCaml implementation of automatic differentiation, some basic linear algebra, Newton's method, gradient descent and neural networks.
+An OCaml implementation of neural networks from scratch.
 
-Trains a neural network to output an arbitrary boolean function as a demonstration. Sample output:
+This includes implementations of:
+
+- automatic differentiation
+- basic linear algebra
+- Newton's method
+- gradient descent
+
+As a demonstration, the program accepts as input an arbitrary boolean function, and trains a neural network to recognise that function. It uses every possible set of inputs to construct a training set, and reports the training-set accuracy of the trained network.
+
+Sample output:
 
 ~~~~
-$ _build/default/main.exe  '(And (Or (Var 0) (Var 1)) (Var 2))'
+$ _build/default/main.exe '(And (Or (Var 0) (Var 1)) (Var 2))'
 Data:
 Input: (0 0 0). Answer: (0).
 Input: (0 0 1). Answer: (0).
@@ -33,3 +42,5 @@ Input: (1 1 0). Answer: (0). Output: (0.015185525835664073).
 Input: (1 1 1). Answer: (1). Output: (0.99998387439481018).
 Success rate: 1x.
 ~~~~
+
+It is not yet well-optimized for much larger networks.
